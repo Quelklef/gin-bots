@@ -5,9 +5,59 @@ from cards import Card, all_cards
 import itertools as it
 from util import powerset, pairwise, flatten, union
 
+
 UNDERCUT_BONUS = 20
 GIN_BONUS = 20
 
+def is_book(cards):
+  """ a 3- or 4-of a kind """
+  return len(cards) in [3, 4] and len(set(card.rank for card in cards)) == 1
+
+def is_run(cards):
+  """ a straight flush with 3 or more cards """
+  return len(cards) in [3, 4] and all( prev_card.adjacent(card) for prev_card, card in pairwise(sorted(cards)) )
+
+def is_meld(cards):
+  """ a book or a run """
+  return is_book(cards) or is_run(cards)
+
+def get_melds(hand):
+  melds_3 = filter(is_meld, it.combinations(hand, 3))
+  melds_4 = filter(is_meld, it.combinations(hand, 4))
+  return map(set, it.chain(melds_4, melds_3))
+
+def conflicting(melds):
+  """ two melds contain the same card """
+  return sum(map(len, melds)) != len(union(melds, set()))
+
+def sum_cards_value(cards):
+  return sum(card.value for card in cards)
+
+def arrange_hand(hand, other_melds={}):
+  """ Arrange a hand into (melds, deadwood)
+  If `other_melds` is included, allows cards in `hand` to be tacked
+  onto those melds when creating melds """
+  # https://stackoverflow.com/a/542706/4781072
+
+  all_possible_melds = get_melds(hand)
+  meld_sets = powerset(all_possible_melds)
+  valid_meld_sets = it.filterfalse(conflicting, meld_sets)
+
+  def can_be_added_to_other_melds(card):
+    return any(is_meld(meld | {card}) for meld in other_melds)
+
+  def deadwood(meld_set):
+    cards_in_melds = set(flatten(meld_set))
+    leftover_cards = hand - cards_in_melds
+    deadwood = it.filterfalse(can_be_added_to_other_melds, leftover_cards)
+    return deadwood
+
+  def points_leftover(meld_set):
+    return sum_cards_value(deadwood(meld_set))
+
+  best_meld_set = min(valid_meld_sets, key=points_leftover)
+
+  return best_meld_set, deadwood(best_meld_set)
 
 def score_hand(our_hand, their_hand):
   """ Accepts two hands. The first hand is that of the player who ended the game.
@@ -41,56 +91,6 @@ def score_hand(our_hand, their_hand):
     if is_gin: our_score += GIN_BONUS
     return our_score
 
-def is_book(cards):
-  """ a 3- or 4-of a kind """
-  return len(cards) in [3, 4] and len(set(card.rank for card in cards)) == 1
-
-def is_run(cards):
-  """ a straight flush with 3 or more cards """
-  return len(cards) in [3, 4] and all( prev_card.adjacent(card) for prev_card, card in pairwise(sorted(cards)) )
-
-def is_meld(cards):
-  """ a book or a run """
-  return is_book(cards) or is_run(cards)
-
-def get_melds(hand):
-  melds_3 = filter(is_meld, it.combinations(hand, 3))
-  melds_4 = filter(is_meld, it.combinations(hand, 4))
-  return it.chain(melds_4, melds_3)
-
-def conflicting(melds):
-  """ two melds contain the same card """
-  return len(sum(melds)) != len(union(melds))
-
-def sum_cards_value(cards):
-  return sum(card.value for card in cards)
-
-def arrange(hand, other_melds={}):
-  """ Arrange a hand into (melds, deadwood)
-  If `other_melds` is included, allows cards in `hand` to be tacked
-  onto those melds when creating melds """
-  # https://stackoverflow.com/a/542706/4781072
-
-  all_possible_melds = get_melds(hand)
-  meld_sets = powerset(all_possible_melds)
-  valid_meld_sets = it.filterfalse(conflicting, meld_sets)
-
-  def can_be_added_to_other_melds(card):
-    return any(is_meld(meld + {card} for meld in other_melds))
-
-  def deadwood(meld_set):
-    cards_in_melds = set(flatten(meld_set))
-    leftover_cards = hand - cards_in_melds
-    deadwood = it.filterfalse(can_be_added_to_other_melds, leftover_cards)
-    return deadwood
-
-  def points_leftover(meld_set):
-    return sum_cards_value(deadwood(meld_set))
-
-  best_meld_set = min(valid_meld_sets, key=points_leftover)
-
-  return best_meld_set, deadwood(best_meld_set)
-
 def play_hand(agent1, agent2):
   """ Pit two agents against each other in a single hand of Gin.
   Return an integer value V where:
@@ -110,8 +110,8 @@ def play_hand(agent1, agent2):
   stack = []
 
   history = []
-  hand1 = [ deck.pop() for _ in range(10) ]
-  hand2 = [ deck.pop() for _ in range(10) ]
+  hand1 = { deck.pop() for _ in range(10) }
+  hand2 = { deck.pop() for _ in range(10) }
 
   # Whose turn is it?
   player = agent1
@@ -119,11 +119,16 @@ def play_hand(agent1, agent2):
   hand = hand1
   other_hand = hand2
 
-  def switch():
+  def switch_players():
+    nonlocal player
     if player == agent1:
       player, hand, other_hand = agent2, hand2, hand1
     elif player == agent2:
       player, hand, other_hand = agent1, hand1, hand2
+
+  def message():
+    """ send the player the current state and get their response """
+    return player({*hand}, [*stack], [*history])
 
   while True:
 
@@ -132,24 +137,31 @@ def play_hand(agent1, agent2):
       return 0
 
     # Play the turn
-    draw_choice = player(hand[::], history[::])
+    draw_choice = message()
     history.append(draw_choice)
 
     if draw_choice == 'deck':
       drawn_card = deck.pop()
     elif draw_choice == 'stack':
+      if len(stack) == 0:
+        raise ValueError("Cannot draw from an empty stack.")
       drawn_card = stack.pop()
+    else:
+      raise ValueError(f"Expected either 'deck' or 'stack', not {repr(draw_choice)}.")
 
-    hand.append(drawn_card)
-    action = player(hand[::], history[::])
+    hand.add(drawn_card)
+    action = message()
     if action == 'end':
       # end the game
-      return score_hands(hand, other_hand)
+      # TODO: ensure that the player does not go down for too much
+      return score_hand(hand, other_hand)
     else:
       # discarding a card
-      discard_choice = action
+      rank, suit = action[:-1], action[-1]
+      discard_choice = Card(suit, rank)
       stack.append(discard_choice)
       history.append(discard_choice)
+      hand.remove(discard_choice)
 
     # Switch players
     switch_players()

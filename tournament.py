@@ -4,19 +4,28 @@ from pathlib import Path
 import itertools as it
 from collections import namedtuple
 
+import communication
 import gin
 
 GinBot = namedtuple('GinBot', ['name', 'exec_loc'])
 
-def bot_to_function(bot):
-  """ make a Python function that proxies the bot executable """
-  def function(argument):
-    if not isinstance(argument, str):
-      raise ValueError(f"Argument must be an instance of str, not of type {type(argument)}.")
+class GinBot:
+  def __init__(self, name, exec_loc):
+    self.name = name
+    self.exec_loc = exec_loc
 
-    # https://stackoverflow.com/a/4760517/4608364
-    return subprocess.run([bot.exec_loc, argument], stdout=subprocess.PIPE).stdout.decode()
-  return function
+  def call_exec(self, *args):
+    return communication.to_client(self.exec_loc, args)
+
+  def __call__(self, hand, stack, history):
+    result = self.call_exec(
+      ','.join(map(str, hand)),
+      ','.join(map(str, stack)),
+      ','.join(map(str, history)),
+    )
+    print(f"[{self.name}] {hand} {stack} {history} -> {result}")
+    return result
+
 
 def do_tournament(bots):
   """ For a list of bots, pit each bot against every other """
@@ -29,10 +38,7 @@ def do_tournament(bots):
   for match in matches:
     bot1, bot2 = match
 
-    result = play_hand(
-      bot_to_function(bot1),
-      bot_to_function(bot2),
-    )
+    result = play_hand(bot1, bot2)
 
     scores[match] += result
 
@@ -54,4 +60,9 @@ def main():
 
 
 if __name__ == '__main__':
-  main()
+  #main()
+
+  random_bot_1 = GinBot('random1', Path('bots/random/random.sh'))
+  random_bot_2 = GinBot('random2', Path('bots/random/random.sh'))
+  result = gin.play_hand(random_bot_1, random_bot_2)
+  print(result)

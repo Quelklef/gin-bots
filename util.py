@@ -17,8 +17,8 @@ def flatten(list_of_lists):
   "Flatten one level of nesting"
   return itertools.chain.from_iterable(list_of_lists)
 
-def union(xs):
-  result = set()
+def union(xs, start=None):
+  result = start if start is not None else set()
   for x in xs:
     result |= x
   return result
