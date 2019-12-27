@@ -78,13 +78,3 @@ class Card:
 all_cards = { Card(suit, rank)
               for suit in ['clubs', 'hearts', 'diamonds', 'spades']
               for rank in range(1, 14 + 1) }
-
-
-a_hand = frozenset({
-  Card('spades', 3),
-  Card('diamonds', 3),
-  Card('hearts', 3),
-
-  Card('spades', 10),
-  Card('spades', 11),
-})
