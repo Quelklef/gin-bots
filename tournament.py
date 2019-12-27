@@ -1,30 +1,37 @@
 import os
+import subprocess
 from pathlib import Path
+import itertools as it
+from collections import namedtuple
 
-class GinBot:
-  def __init__(self, name: str, exec_loc: Path):
-    self.name = name
-    self.exec_loc = exec_loc
+import gin
+
+GinBot = namedtuple('GinBot', ['name', 'exec_loc'])
+
+def bot_to_function(bot):
+  """ make a Python function that proxies the bot executable """
+  def function(argument):
+    if not isinstance(argument, str):
+      raise ValueError(f"Argument must be an instance of str, not of type {type(argument)}.")
+
+    # https://stackoverflow.com/a/4760517/4608364
+    return subprocess.run([bot.exec_loc, argument], stdout=subprocess.PIPE).stdout.decode()
+  return function
 
 def do_tournament(bots):
   """ For a list of bots, pit each bot against every other """
 
   # Pit every bot against each other
 
-  matches = ( (bot1, bot2)
-              for bot1 in bots
-              for bot2 in bots
-              # Don't make bots fight themselves
-              if bot1 != bot2 )
-
+  matches = it.combinations(bots, 2)
   scores = { match: 0 for match in matches }
 
   for match in matches:
     bot1, bot2 = match
 
-    result = do_match(
-      f"bots/{bot1}",
-      f"bots/{bot2}",
+    result = play_hand(
+      bot_to_function(bot1),
+      bot_to_function(bot2),
     )
 
     scores[match] += result
