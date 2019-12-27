@@ -171,7 +171,6 @@ def play_hand(player1, player2):
     else:
       # discarding a card
       discard_choice = Card(action)
-      print(f"{player} discards {discard_choice}")
       stack.append(discard_choice)
       history.append(discard_choice)
       hand.remove(discard_choice)
