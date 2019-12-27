@@ -2,8 +2,8 @@
 
 import random
 from cards import Card, all_cards
-
-frz = frozenset
+import itertools as it
+from util import powerset, pairwise, flatten, union
 
 UNDERCUT_BONUS = 20
 GIN_BONUS = 20
@@ -14,15 +14,15 @@ def score_hand(our_hand, their_hand):
   Calculates the number of points that that player scores. """
 
   # First arrange our hand as best as possible
-  (our_sets, our_runs, our_leftovers) = _arrange_hand(our_hand)
+  our_melds, our_deadwood = arrange_hand(our_hand)
 
   # Now arrange the their hand, keeping in mind that
-  # it can build off of the first hand's sets and runs
-  (their_sets, their_runs, their_leftovers) = _arrange_hand(their_hand, our_sets, our_runs)
+  # it can build off of the first hand's books and runs
+  their_melds, their_deadwood = arrange_hand(their_hand, our_melds)
 
   # Calculate number of points in each hand
-  our_points = sum(card.value for card in our_leftovers)
-  their_points = sum(card.value for card in their_leftovers)
+  our_points = sum_cards_value(our_deadwood)
+  their_points = sum_cards_value(their_deadwood)
 
   # Check if an undercut
   if their_points < our_points:
@@ -37,164 +37,59 @@ def score_hand(our_hand, their_hand):
     # Calculate our score
     our_score = their_points - our_points
     # Check if gin or not
-    is_gin = our_leftovers == []
+    is_gin = our_deadwood == []
     if is_gin: our_score += GIN_BONUS
     return our_score
 
+def is_book(cards):
+  """ a 3- or 4-of a kind """
+  return len(cards) in [3, 4] and len(set(card.rank for card in cards)) == 1
 
-def _arrange_hand(hand, other_sets=frz(), other_runs=frz()):
-  """ Return (sets, runs, leftovers), minimizing leftover points.
-  Accepts optional values `other_sets` and `other_runs` which are
-  a list of sets and runs that the hand can build on. This is for
-  use when a player goes down for some number of points, since the
-  other player can build off of his sets and runs. """
-  best_arrangement = None
-  least_points = float('inf')
+def is_run(cards):
+  """ a straight flush with 3 or more cards """
+  return len(cards) in [3, 4] and all( prev_card.adjacent(card) for prev_card, card in pairwise(sorted(cards)) )
 
-  for arrangement in _arrange_hand_all(hand):
-    sets, runs, leftover = arrangement
-    points = sum(card.value for card in leftover)
-    if points < least_points:
-      best_arrangement = arragement
-      least_points = points
+def is_meld(cards):
+  """ a book or a run """
+  return is_book(cards) or is_run(cards)
 
-  return best_arrangement
+def get_melds(hand):
+  melds_3 = filter(is_meld, it.combinations(hand, 3))
+  melds_4 = filter(is_meld, it.combinations(hand, 4))
+  return it.chain(melds_4, melds_3)
 
+def conflicting(melds):
+  """ two melds contain the same card """
+  return len(sum(melds)) != len(union(melds))
 
-def _arrange_hand_all(hand, sets=frz(), runs=frz(), other_sets=frz(), other_runs=frz()):
-  """ Yield every possible way to organize this hand into sets and runs.
-  The values `other_sets` and `other_runs` represent sets and runs that can
-  be built on from the other player's hand.
-  Values are yielded in the form (sets, runs, leftovers).
-  If cards are tacked onto `other_sets` or `other_runs`, they do not
-  appear in the yielded value. """
+def sum_cards_value(cards):
+  return sum(card.value for card in cards)
 
-  for card in hand:
+def arrange(hand, other_melds={}):
+  """ Arrange a hand into (melds, deadwood)
+  If `other_melds` is included, allows cards in `hand` to be tacked
+  onto those melds when creating melds """
+  # https://stackoverflow.com/a/542706/4781072
 
-    # As we do the rest of the algorithm, also
-    # compute whether or not this card is a leftover, i.e.
-    # belongs to no runs or sets
-    card_is_leftover = True
+  all_possible_melds = get_melds(hand)
+  meld_sets = powerset(all_possible_melds)
+  valid_meld_sets = it.filterfalse(conflicting, meld_sets)
 
-    # Try this card in all possible sets
-    for set in _make_sets(card, hand):
-      yield from _arrange_hand_all(
-        hand - set,
-        sets | frz({set}),
-        runs,
-        other_sets,
-        other_runs,
-      )
+  def can_be_added_to_other_melds(card):
+    return any(is_meld(meld + {card} for meld in other_melds))
 
-      card_is_leftover = False
+  def deadwood(meld_set):
+    cards_in_melds = set(flatten(meld_set))
+    leftover_cards = hand - cards_in_melds
+    deadwood = it.filterfalse(can_be_added_to_other_melds, leftover_cards)
+    return deadwood
 
-    # Try tacking this card onto a set from the other hand
-    for other_set in other_sets:
-      if _can_tack_onto_set(card, other_set):
-        yield from _arrange_hand_all(
-          hand - frz({card}),
-          sets,
-          runs,
-          other_sets - frz({other_set}),
-          other_runs
-        )
+  def points_leftover(meld_set):
+    return sum_cards_value(deadwood(meld_set))
 
-        card_is_leftover = False
+  best_meld_set = min(valid_meld_sets, key=points_leftover)
 
-    # Try this card in all poossible runs
-    for run in _make_runs(card, hand):
-      yield from _arrange_hand_all(
-        hand - run,
-        sets,
-        runs | frz({run}),
-        other_sets,
-        other_runs
-      )
-
-      card_is_leftover = False
-
-    # Try tacking this card onto a set from the other hand
-    for other_run in other_runs:
-      if _can_tack_onto_run(card, other_run):
-        yield from _arrange_hand_all(
-          hand - frz({card}),
-          sets,
-          runs,
-          other_sets,
-          other_runs - frz({other_run}),
-        )
-
-        card_is_leftover = False
-
-    if card_is_leftover:
-      # Use this card as a leftover
-      yield from _arrange_hand_all(
-        hand - frz({card}),
-        sets,
-        runs,
-        other_sets,
-        other_runs
-      )
-
-
-def _make_sets(card, cards):
-  """ Yield all possible sets containing the given card that can be made
-  with the given card and the other cards """
-
-  cards_with_same_rank = frz(filter(lambda c: c.rank == card.rank, cards))
-
-  if len(cards_with_same_rank) < 2:
-    return
-
-  if len(cards_with_same_rank) == 2:
-    yield card + cards_with_same_rank
-    return
-
-  if len(cards_with_same_rank) == 3:
-    # Either do all 4
-    yield frz({card}) | cards_with_same_rank
-    # Or exclude one
-    for removed_card in cards_with_same_rank:
-      yield frz({card}) | (cards_with_same_rank - {removed_card})
-    return
-
-
-def _make_runs(card, cards):
-  """ Return all possible runs containing the given card that can be made
-  with the given card and the other cards """
-
-  # First collect all the cards which form a contiguous range around the given card
-  contiguous = {card}
-  while True:
-    for card in cards:
-      # Add the card to candidates if it's not already there and it's
-      # adjacent to one of the cards
-      if card not in contiguous and any(map(lambda c: card.adjacent(c), contiguous)):
-        contiguous.add(card)
-
-    else:
-      # No more extensions can be done
-      break
-
-  # Turn from set into sorted list
-  contiguous = sorted(contiguous)
-  print(contiguous)
-
-  # Now yield every possible run
-  for run_len in range(3, len(contiguous) + 1):
-    for run_start in range(0, len(contiguous) - run_len):
-      print(run_len, run_start, contiguous[run-start : run_start + run_len])
-      yield set(contiguous[run_start : run_start + run_len])
-
-
-def _can_tack_onto_set(card, set):
-  return card.rank == set[0].rank
-
-
-def _can_tack_onto_run(card, run):
-  sorted_run = sorted(run)
-  return adjacent(card, sorted_run[0]) or adjacent(card, sorted_run[-1])
-
+  return best_meld_set, deadwood(best_meld_set)
 
 def play_hand(agent1, agent2):
   """ Pit two agents against each other in a single hand of Gin.
