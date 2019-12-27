@@ -1,13 +1,15 @@
 """ This file handles implementing the game of Gin """
 
 import random
-from cards import Card, all_cards
 import itertools as it
+
+from cards import Card, all_cards
 from util import powerset, pairwise, flatten, union
 
 
 UNDERCUT_BONUS = 20
 GIN_BONUS = 20
+MAX_POINTS_TO_GO_DOWN = 7
 
 def is_book(cards):
   """ a 3- or 4-of a kind """
@@ -56,8 +58,14 @@ def arrange_hand(hand, other_melds={}):
     return sum_cards_value(deadwood(meld_set))
 
   best_meld_set = min(valid_meld_sets, key=points_leftover)
-
   return best_meld_set, deadwood(best_meld_set)
+
+def points_leftover(hand):
+  melds, deadwood = arrange_hand(hand)
+  return sum_cards_value(deadwood)
+
+def can_end(hand):
+  return points_leftover(hand) <= MAX_POINTS_TO_GO_DOWN
 
 def score_hand(our_hand, their_hand):
   """ Accepts two hands. The first hand is that of the player who ended the game.
@@ -91,8 +99,8 @@ def score_hand(our_hand, their_hand):
     if is_gin: our_score += GIN_BONUS
     return our_score
 
-def play_hand(agent1, agent2):
-  """ Pit two agents against each other in a single hand of Gin.
+def play_hand(player1, player2):
+  """ Pit two players against each other in a single hand of Gin.
   Return an integer value V where:
     abs(V) is the value of the winning bot
     V > 0 only if bot 1 won
@@ -114,17 +122,17 @@ def play_hand(agent1, agent2):
   hand2 = { deck.pop() for _ in range(10) }
 
   # Whose turn is it?
-  player = agent1
+  player = player1
   # Reference to player's hand
   hand = hand1
   other_hand = hand2
 
   def switch_players():
     nonlocal player
-    if player == agent1:
-      player, hand, other_hand = agent2, hand2, hand1
-    elif player == agent2:
-      player, hand, other_hand = agent1, hand1, hand2
+    if player == player1:
+      player, hand, other_hand = player2, hand2, hand1
+    elif player == player2:
+      player, hand, other_hand = player1, hand1, hand2
 
   def message():
     """ send the player the current state and get their response """
@@ -142,10 +150,12 @@ def play_hand(agent1, agent2):
 
     if draw_choice == 'deck':
       drawn_card = deck.pop()
+
     elif draw_choice == 'stack':
       if len(stack) == 0:
-        raise ValueError("Cannot draw from an empty stack.")
+        raise ValueError("Cannot draw from an empty stack {len(stack)} left")
       drawn_card = stack.pop()
+
     else:
       raise ValueError(f"Expected either 'deck' or 'stack', not {repr(draw_choice)}.")
 
@@ -153,16 +163,18 @@ def play_hand(agent1, agent2):
     action = message()
     if action == 'end':
       # end the game
-      # TODO: ensure that the player does not go down for too much
+      if points_leftover(hand) > MAX_POINTS_TO_GO_DOWN:
+        raise ValueError(f"Cannot end on more than {MAX_POINTS_TO_GO_DOWN} points.")
+
       return score_hand(hand, other_hand)
+
     else:
       # discarding a card
-      rank, suit = action[:-1], action[-1]
-      discard_choice = Card(suit, rank)
+      discard_choice = Card(action)
+      print(f"{player} discards {discard_choice}")
       stack.append(discard_choice)
       history.append(discard_choice)
       hand.remove(discard_choice)
 
     # Switch players
     switch_players()
-

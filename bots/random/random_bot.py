@@ -1,6 +1,12 @@
 import random
+import sys
+sys.path.append('../..')
 
-def agent(hand, stack, history):
+from gin import can_end
+from cards import Card
+from client import play_bot
+
+def bot(hand, stack, history):
   """ play some gin """
 
   if len(hand) == 10:
@@ -13,24 +19,13 @@ def agent(hand, stack, history):
 
   else:
 
-    if random.random() < 0.1:
+    # end with 30% chance if we're able to
+    if can_end(hand) and random.random() < 0.3:
       return 'end'
 
     # Need to choose what card to discard
-    return random.choice(hand)
+    return random.choice([*hand])
 
 
 if __name__ == '__main__':
-  with open('comm.txt', 'r') as f:
-    lines = f.read()
-
-  hand, stack, history = lines.split('\n')
-
-  hand    = [] if not hand    else hand   .split(',')
-  stack   = [] if not stack   else stack  .split(',')
-  history = [] if not history else history.split(',')
-
-  result = agent(hand, stack, history)
-
-  with open('comm.txt', 'w') as f:
-    f.write(result)
+  play_bot(bot)

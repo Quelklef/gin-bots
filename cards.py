@@ -1,47 +1,21 @@
 
 class Card:
-  def __init__(self, suit, rank):
-    self.suit = {
-      'c': 'clubs',
-      'd': 'diamonds',
-      'h': 'hearts',
-      's': 'spades',
-    }[suit.lower()[0]]
+  def __init__(self, card):
 
-    if isinstance(rank, str):
-      if rank.lower() in 'ajqk':
-        self.rank = {
-          'a': 1,
-          'j': 11,
-          'q': 12,
-          'k': 13,
-        }[rank.lower()]
-      else:
-        self.rank = int(rank)
-    else:
-      self.rank = rank
+    suit = card[0].lower()
+    rank = int(card[1:])
+
+    assert rank in range(1, 13 + 1)
+    assert suit in 'cdhs'
+
+    self.suit = suit.lower()
+    self.rank = rank
 
   def __repr__(self):
-    return f"Card({repr(self.suit)}, {repr(self.rank)})"
+    return f"Card('{self.suit.upper()}{self.rank}')"
 
   def __str__(self):
-    suit = {
-      'clubs': "C",
-      'diamonds': "D",
-      'hearts': "H",
-      'spades': "S",
-    }[self.suit]
-
-    ranks = {
-      1: 'A',
-      11: 'J',
-      12: 'Q',
-      13: 'K',
-    }
-
-    rank = ranks[self.rank] if self.rank in ranks else str(self.rank)
-
-    return rank + suit
+    return f"{self.suit.upper()}{str(self.rank).zfill(2)}"
 
   @property
   def value(self):
@@ -66,6 +40,6 @@ class Card:
   def __hash__(self): return self._tuple.__hash__()
 
 
-all_cards = { Card(suit, rank)
-              for suit in ['clubs', 'hearts', 'diamonds', 'spades']
+all_cards = { Card(f"{suit}{rank}")
+              for suit in 'cdhs'
               for rank in range(1, 13 + 1) }

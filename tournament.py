@@ -23,7 +23,6 @@ class GinBot:
       ','.join(map(str, stack)),
       ','.join(map(str, history)),
     )
-    print(f"[{self.name}] {hand} {stack} {history} -> {result}")
     return result
 
 
