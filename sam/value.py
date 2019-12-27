@@ -56,3 +56,6 @@ def value(hand):
         return [card for card in hand if card not in cards_in_melds]
     deadwood_sets = map(deadwood, valid_meld_sets)
     return min(map(sum_cards_value, deadwood_sets))
+
+if __name__ == '__main__':
+    assert(value(cards.test_hand) is 19)
