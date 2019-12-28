@@ -39,7 +39,7 @@ def arrange_hand(hand, other_melds={}):
   """ Arrange a hand into (melds, deadwood)
   If `other_melds` is included, allows cards in `hand` to be tacked
   onto those melds when creating melds """
-  # https://stackoverflow.com/a/542706/4781072
+  # https://discardoverflow.com/a/542706/4781072
 
   all_possible_melds = get_melds(hand)
   meld_sets = powerset(all_possible_melds)
@@ -66,6 +66,17 @@ def points_leftover(hand):
 
 def can_end(hand):
   return points_leftover(hand) <= MAX_POINTS_TO_GO_DOWN
+
+def calculate_discard(history):
+  """ Calculate the current discard pile from a history """
+  discard = []
+
+  for draw_choice, discard_choice in history:
+    if draw_choice == 'discard':
+      discard.pop()
+    discard.append(discard_choice)
+
+  return discard
 
 def score_hand(our_hand, their_hand):
   """ Accepts two hands. The first hand is that of the player who ended the game.
@@ -114,8 +125,8 @@ def play_hand(player1, player2):
   deck = list(all_cards)
   random.shuffle(deck)
 
-  # discard stack
-  stack = []
+  # discard pile
+  discard = []
 
   history = []
   hand1 = { deck.pop() for _ in range(10) }
@@ -136,7 +147,7 @@ def play_hand(player1, player2):
 
   def message():
     """ send the player the current state and get their response """
-    return player({*hand}, [*stack], [*history])
+    return player({*hand}, [*history])
 
   while True:
 
@@ -146,18 +157,17 @@ def play_hand(player1, player2):
 
     # Play the turn
     draw_choice = message()
-    history.append(draw_choice)
 
     if draw_choice == 'deck':
       drawn_card = deck.pop()
 
-    elif draw_choice == 'stack':
-      if len(stack) == 0:
-        raise ValueError("Cannot draw from an empty stack {len(stack)} left")
-      drawn_card = stack.pop()
+    elif draw_choice == 'discard':
+      if len(discard) == 0:
+        raise ValueError("Cannot draw from an empty discard!")
+      drawn_card = discard.pop()
 
     else:
-      raise ValueError(f"Expected either 'deck' or 'stack', not {repr(draw_choice)}.")
+      raise ValueError(f"Expected either 'deck' or 'discard', not {repr(draw_choice)}.")
 
     hand.add(drawn_card)
     action = message()
@@ -168,12 +178,12 @@ def play_hand(player1, player2):
 
       return score_hand(hand, other_hand)
 
-    else:
-      # discarding a card
-      discard_choice = Card(action)
-      stack.append(discard_choice)
-      history.append(discard_choice)
-      hand.remove(discard_choice)
+    # else, discarding a card
+    discard_choice = Card(action)
+    discard.append(discard_choice)
+    hand.remove(discard_choice)
+
+    history.append((draw_choice, discard_choice))
 
     # Switch players
     switch_players()

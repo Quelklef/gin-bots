@@ -1,37 +1,44 @@
 """ Helper module for gin bots that so choose to be written in Python """
 
 from cards import Card
-from gin import can_end
-
-def try_card(arg):
-  try:
-    return Card(arg)
-  except ValueError:
-    return arg
+import gin
 
 def play_bot(choose_draw, should_end, choose_discard):
   with open('comm.txt', 'r') as f:
     lines = f.read()
 
-  hand, stack, history = lines.split('\n')
+  hand_str, history_str = lines.split('\n')
 
-  hand    = [] if not hand    else { Card(card) for card in hand.split(',') }
-  stack   = [] if not stack   else [ Card(card) for card in stack.split(',') ]
-  history = [] if not history else [ try_card(s) for s in history.split(',') ]
+  if hand_str == '':
+    hand = set()
+  else:
+    hand = { Card(card) for card in hand_str.split(',') }
 
-  result = str(choose_move(choose_draw, should_end, choose_discard, hand, stack, history))
+  if history_str == '':
+    history = []
+  else:
+    history = []
+    for turn in history_str.split(','):
+      draw_choice, discard_choice = turn.split(';')
+      history.append( (draw_choice, Card(discard_choice)) )
+
+  move_choice = choose_move(choose_draw, should_end, choose_discard, hand, history)
+  result = str(move_choice)
 
   with open('comm.txt', 'w') as f:
     f.write(result)
 
-def choose_move(choose_draw, should_end, choose_discard, hand, stack, history):
+def choose_move(choose_draw, should_end, choose_discard, hand, history):
   if len(hand) == 10:
-    # If stack is empty, must draw from deck
-    if len(stack) == 0:
-      return 'deck'
-    return choose_draw(hand, stack, history)
 
-  if can_end(hand) and should_end(hand, stack, history):
+    # If discard is empty, must draw from deck
+    discard = gin.calculate_discard(history)
+    if len(discard) == 0:
+      return 'deck'
+    else:
+      return choose_draw(hand, history)
+
+  if gin.can_end(hand) and should_end(hand, history):
     return 'end'
 
-  return choose_discard(hand, stack, history)
+  return choose_discard(hand, history)

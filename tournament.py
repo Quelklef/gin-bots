@@ -7,8 +7,6 @@ from collections import namedtuple
 import communication
 import gin
 
-GinBot = namedtuple('GinBot', ['name', 'exec_loc'])
-
 class GinBot:
   def __init__(self, name, exec_loc):
     self.name = name
@@ -17,11 +15,10 @@ class GinBot:
   def call_exec(self, *args):
     return communication.to_client(self.exec_loc, args)
 
-  def __call__(self, hand, stack, history):
+  def __call__(self, hand, history):
     result = self.call_exec(
       ','.join(map(str, hand)),
-      ','.join(map(str, stack)),
-      ','.join(map(str, history)),
+      ','.join(f"{draw_choice};{discard_choice}" for draw_choice, discard_choice in history),
     )
     return result
 
