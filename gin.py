@@ -45,30 +45,30 @@ def arrange_hand(hand, other_melds={}):
   meld_sets = powerset(all_possible_melds)
   valid_meld_sets = it.filterfalse(conflicting, meld_sets)
 
-  def can_be_added_to_other_melds(card):
-    return any(is_meld(meld | {card}) for meld in other_melds)
-
-  def deadwood(meld_set):
-    cards_in_melds = set(flatten(meld_set))
-    leftover_cards = hand - cards_in_melds
-    deadwood = it.filterfalse(can_be_added_to_other_melds, leftover_cards)
-    return deadwood
-
   def points_leftover(meld_set):
-    return sum_cards_value(deadwood(meld_set))
+    meld_cards = set(flatten(meld_set))
+    deadwood = hand - meld_cards
+    return sum_cards_value(deadwood)
 
   best_meld_set = min(valid_meld_sets, key=points_leftover)
   return best_meld_set, deadwood(best_meld_set)
 
 def points_leftover(hand):
+  """ how many deadwood points does this hand have? """
   melds, deadwood = arrange_hand(hand)
   return sum_cards_value(deadwood)
 
+def extends_any_meld(melds):
+  """ returns a predicate of a card that decides whether that card can
+  extend any of these given melds """
+  return lambda card: any(is_meld(meld | {card}) for meld in melds)
+
 def can_end(hand):
+  """ is the player able to end the game, given the current hand? """
   return points_leftover(hand) <= MAX_POINTS_TO_GO_DOWN
 
 def calculate_discard(history):
-  """ Calculate the current discard pile from a history """
+  """ calculate the current discard pile from a history """
   discard = []
 
   for draw_choice, discard_choice in history:
@@ -85,9 +85,12 @@ def score_hand(our_hand, their_hand):
   # First arrange our hand as best as possible
   our_melds, our_deadwood = arrange_hand(our_hand)
 
-  # Now arrange the their hand, keeping in mind that
-  # it can build off of the first hand's books and runs
-  their_melds, their_deadwood = arrange_hand(their_hand, our_melds)
+  # Now arrange the their hand
+  their_melds, their_deadwood = arrange_hand(their_hand)
+
+  # Play our deadwood on their melds and vice-versa
+  our_deadwood = it.filterfalse(extends_any_meld(their_melds), our_deadwood)
+  their_deadwood = it.filterfalse(extends_any_meld(our_melds), their_deadwood)
 
   # Calculate number of points in each hand
   our_points = sum_cards_value(our_deadwood)
