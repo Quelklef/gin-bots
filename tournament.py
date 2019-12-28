@@ -36,15 +36,17 @@ def do_tournament(bots):
   for match in matches:
     bot1, bot2 = match
 
+    print(f"{bot1} vs {bot2}... ", end='', flush=True)
+
     result = gin.play_hand(bot1, bot2)
     scores[match] = result
 
     if result == 0:
-      print(f"{bot1} vs {bot2}: tie")
+      print("tie")
     else:
       winner = bot1 if result > 0 else bot2
       winner_score = abs(result)
-      print(f"{bot1} vs {bot2}: {winner} wins with a score of {winner_score}")
+      print(f"{winner} wins for {winner_score} points")
 
 
 def main():
