@@ -12,6 +12,9 @@ class GinBot:
     self.name = name
     self.exec_loc = exec_loc
 
+  def __str__(self):
+    return self.name
+
   def call_exec(self, *args):
     return communication.to_client(self.exec_loc, args)
 
@@ -27,16 +30,14 @@ def do_tournament(bots):
   """ For a list of bots, pit each bot against every other """
 
   # Pit every bot against each other
-
-  matches = it.combinations(bots, 2)
+  matches = list(it.combinations(bots, 2))
   scores = { match: 0 for match in matches }
 
   for match in matches:
     bot1, bot2 = match
 
-    result = play_hand(bot1, bot2)
-
-    scores[match] += result
+    result = gin.play_hand(bot1, bot2)
+    scores[match] = result
 
     if result == 0:
       print(f"{bot1} vs {bot2}: tie")
@@ -56,9 +57,4 @@ def main():
 
 
 if __name__ == '__main__':
-  #main()
-
-  random_bot_1 = GinBot('random1', Path('bots/random/random.sh'))
-  random_bot_2 = GinBot('random2', Path('bots/random/random.sh'))
-  result = gin.play_hand(random_bot_1, random_bot_2)
-  print(result)
+  main()

@@ -45,10 +45,13 @@ def arrange_hand(hand, other_melds={}):
   meld_sets = powerset(all_possible_melds)
   valid_meld_sets = it.filterfalse(conflicting, meld_sets)
 
-  def points_leftover(meld_set):
+  def deadwood(meld_set):
     meld_cards = set(flatten(meld_set))
     deadwood = hand - meld_cards
-    return sum_cards_value(deadwood)
+    return deadwood
+
+  def points_leftover(meld_set):
+    return sum_cards_value(deadwood(meld_set))
 
   best_meld_set = min(valid_meld_sets, key=points_leftover)
   return best_meld_set, deadwood(best_meld_set)
