@@ -50,9 +50,9 @@ class Card:
   def __hash__(self): return self._tuple.__hash__()
 
 
-all_cards = { Card(f"{suit}{rank}")
-              for suit in 'cdhs'
-              for rank in range(1, 13 + 1) }
+all_cards = frozenset({ Card(f"{suit}{rank}")
+                        for suit in 'cdhs'
+                        for rank in range(1, 13 + 1) })
 
 def parse_card_is_ok(string):
   try:
