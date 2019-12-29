@@ -18,5 +18,7 @@ def should_end(hand, history):
   """ choose whether or not to go down """
   return random.random() < 0.3
 
+random_bot = client.make_bot(choose_draw, choose_discard, should_end)
+
 if __name__ == '__main__':
-  client.play_bot(choose_draw, choose_discard, should_end)
+  client.play_bot(random_bot)
