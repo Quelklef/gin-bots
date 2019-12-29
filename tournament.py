@@ -29,6 +29,8 @@ def compete(bot1, bot2, n=15):
   """ pit two bots against each other """
   scores = []
 
+  print(f"\n#= {bot1} vs {bot2} =#")
+
   for i in range(n):
     print(f"Hand #{i + 1}/{n}... ", end='', flush=True)
 
@@ -44,14 +46,14 @@ def compete(bot1, bot2, n=15):
 
   return scores
 
-def do_tournament(bots, n=20):
+def do_tournament(bots):
   """ for a list of bots, pit each bot against every other """
 
   # Pit every bot against each other
   matches = list(it.combinations(bots, 2))
   scores = { match: compete(*match) for match in matches }
 
-  print("\n\n\n#== Scoreboard ==#")
+  print("\n\n#== Scoreboard ==#")
 
   for match in matches:
     bot1, bot2 = match
@@ -67,4 +69,4 @@ bots = { bot_name: GinBot(bot_name, Path(f"bots/{bot_name}/{bot_name}.sh"))
          for bot_name in bot_names }
 
 if __name__ == '__main__':
-  do_tournament(bots)
+  do_tournament(bots.values())
