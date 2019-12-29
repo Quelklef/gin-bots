@@ -19,10 +19,13 @@ class Card:
   def __repr__(self):
     return f"Card({repr(str(self))})"
 
-  def __str__(self):
+  @property
+  def pretty_rank(self):
     ranks = { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' }
-    rank_str = ranks.get(self.rank) or str(self.rank)
-    return f"{self.suit}{rank_str}"
+    return ranks.get(self.rank) or str(self.rank)
+
+  def __str__(self):
+    return f"{self.suit}{self.pretty_rank}"
 
   @property
   def value(self):
