@@ -144,7 +144,7 @@ def play_hand(player1, player2):
   current_player = player1
 
   while True:
-    result = do_turn(deck, discard, history, player1, hand1, player2, hand2, current_player)
+    result = do_turn(deck, history, discard, player1, hand1, player2, hand2, current_player)
 
     if result is not None:
       end_score = result
@@ -156,29 +156,29 @@ def play_hand(player1, player2):
       player2: player1,
     }[current_player]
 
-def do_turn(deck, discard, history, player1, hand1, player2, hand2, current_player):
+def do_turn(deck, history, discard, player1, hand1, player2, hand2, current_player):
   """ do a turn, returning the score or None if the game isn't done """
   # We choose to make the deck running out be a tie
   if len(deck) == 0:
     return 0
 
   current_player_hand = hand1 if current_player == player1 else hand2
-  player_ending = player_turn(deck, discard, history, current_player, current_player_hand)
+  _, _, player_ending = player_turn(deck, history, discard, current_player, current_player_hand)
 
   if player_ending:
     return score_hand(hand1, hand2)
 
-def player_turn(deck, discard, history, player, hand):
+def player_turn(deck, history, discard, player, hand):
   """ have the player take a turn; return whether or not the player ends the game """
 
-  draw_choice                   = player_draw   (deck, discard, history, player, hand)
-  discard_choice, player_ending = player_discard(deck, discard, history, player, hand)
+  draw_choice, _                = player_draw   (deck, history, discard, player, hand)
+  discard_choice, player_ending = player_discard(deck, history, discard, player, hand)
 
   history.append((draw_choice, discard_choice))
 
-  return player_ending
+  return (draw_choice, discard_choice, player_ending)
 
-def player_draw(deck, discard, history, player, hand):
+def player_draw(deck, history, discard, player, hand):
   """ have the player draw a card """
   draw_choice = player({*hand}, [*history])
 
@@ -195,7 +195,9 @@ def player_draw(deck, discard, history, player, hand):
 
   hand.add(drawn_card)
 
-def player_discard(deck, discard, history, player, hand):
+  return (draw_choice, drawn_card)
+
+def player_discard(deck, history, discard, player, hand):
   """ have the player discard a card and optionally end the game """
   discard_choice, do_end = player({*hand}, [*history])
   discard_choice = Card(discard_choice)
@@ -210,4 +212,4 @@ def player_discard(deck, discard, history, player, hand):
     if points_leftover(hand) > MAX_POINTS_TO_GO_DOWN:
       raise ValueError(f"Cannot end on more than {MAX_POINTS_TO_GO_DOWN} points.")
 
-  return discard_choice, do_end
+  return (discard_choice, do_end)
