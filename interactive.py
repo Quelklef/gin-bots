@@ -91,10 +91,12 @@ def end_game(bot_hand):
 
 def play_bots_turn(deck, history, discard, bot, bot_hand):
 
+  discard_copy = [*discard]
   draw_choice, discard_choice, bot_ending = gin.player_turn(deck, history, discard, bot, bot_hand)
 
   if draw_choice == 'discard':
-    print(f"I'll take the {discard[-1]} from the discard; thanks.")
+    gained_card = discard_copy[-1]
+    print(f"I'll take the {gained_card} the discard; thanks.")
 
   if bot_ending:
     points = gin.points_leftover(bot_hand)
