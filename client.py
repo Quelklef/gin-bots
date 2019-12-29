@@ -43,6 +43,7 @@ def make_bot(choose_draw, choose_discard, should_end):
   """
 
   def bot(hand, history):
+    assert(len(hand) in [10, 11])
 
     if len(hand) == 10:
       discard = gin.calculate_discard(history)
