@@ -20,6 +20,11 @@ class Card:
     return f"Card({repr(str(self))})"
 
   @property
+  def sigil(self):
+    sigils = { 'C': '♣', 'D': '♦', 'H': '♥', 'S': '♠' }
+    return sigils[self.suit]
+
+  @property
   def pretty_rank(self):
     ranks = { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' }
     return ranks.get(self.rank) or str(self.rank)

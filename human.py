@@ -26,26 +26,26 @@ def prettier_rank(card):
 
 def card_to_art(card, idx=None):
   string = """
-+-----+
-|  R  |
-|R @ R|
-|  R  |
-+-----+"""[1:]
+@ @ @ @
+@     @
+@  R  @
+@     @
+@ @ @ @"""[1:]
 
   if idx:
    string += f"\n ({idx:>3}) "
 
-  return string.replace('@', card.suit).replace('R', prettier_rank(card))
+  return string.replace('@', card.sigil).replace('R', prettier_rank(card))
 
 def card_to_art_but_just_a_lil(card):
   string = f"""
-+-
-| 
-|{prettier_rank(card)}
-| 
-+-"""[1:]
+@ @  
+@    
+@  {prettier_rank(card)} 
+@    
+@ @  """[1:]
 
-  return string
+  return string.replace('@', card.sigil)
 
 def discard_to_art(discard):
   discard = [*discard]
