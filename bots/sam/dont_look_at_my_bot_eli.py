@@ -48,7 +48,10 @@ def choose_draw(hand, history):
 def singles(cards):
     """ finds cards not in pairs """
     def doesnt_have_pair(card):
-        return all([(card.rank != c.rank and not card.adjacent(c)) for c in cards])
+        return all([(card.rank != c.rank and not card.adjacent(c))
+                    for c
+                    in cards
+                    if c is not card])
     return filter(doesnt_have_pair, cards)
 
 def choose_discard(hand, history):
