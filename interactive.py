@@ -104,6 +104,7 @@ def end_game(bot_hand):
   print(f"Score, bot-relative, is {score}")
 
 def play_bots_turn(deck, history, discard, bot, bot_hand):
+
   draw_choice, discard_choice, bot_ending = gin.player_turn(deck, history, discard, bot, bot_hand)
 
   if draw_choice == 'discard':
@@ -122,7 +123,7 @@ def play_bots_turn(deck, history, discard, bot, bot_hand):
 
 def play_humans_turn(deck, history, discard):
   draw_choice = input_until(
-    "Did the human draw from the deck (1) or from the discard (2)? ['1'/'2']: ",
+    "Did the human draw from the deck (1) or from the discard (2)? [1/2]: ",
     lambda s: s in ['1', '2']
   )
 
@@ -142,7 +143,7 @@ def play_humans_turn(deck, history, discard):
     # Not sure what the human discarded since played face-down
     discard_choice = None
   else:
-    discard_choice = human_move
+    discard_choice = Card(human_move)
     discard.append(discard_choice)
 
   return (draw_choice, discard_choice, human_ending)
