@@ -3,9 +3,7 @@
 from cards import Card
 import gin
 
-def play_bot(choose_draw, choose_discard, should_end):
-  bot = make_bot(choose_draw, choose_discard, should_end)
-
+def play_bot(bot):
   with open('comm.txt', 'r') as f:
     lines = f.read()
 

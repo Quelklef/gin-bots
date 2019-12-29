@@ -112,7 +112,7 @@ def play_bots_turn(deck, history, discard, bot, bot_hand):
   if bot_ending:
     points = gin.points_leftover(bot_hand)
     if points == 0:
-      print("Discard {discard_choice}: Gin!")
+      print(f"Discard {discard_choice}: Gin!")
     else:
       print(f"I'll discard {discard_choice} to go down for {points}.")
   else:
