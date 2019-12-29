@@ -1,7 +1,19 @@
-""" for playing a human player against a bot using a physical deck """
+"""
+For playing a human player against a bot using a physical deck.
+
+Sample REPL code to use this module:
+  >>> import sys
+  >>> sys.path.append('bots/simple')
+  >>> from simple_gin import simple_bot
+  >>> import interactive
+  >>> interactive.play(simple_bot, bot_plays_first=True)
+
+Of course, you can replace the simple bot with any bot
+"""
 
 import gin
 import client
+from cards import Card
 
 def input_until(string, predicate):
   while True:
@@ -9,7 +21,7 @@ def input_until(string, predicate):
     if predicate(val):
       return val
     else:
-      print("Invalid input! Try again.")
+      print("What? Try again.")
 
 def parse_card_is_ok(string):
   try:
@@ -25,26 +37,47 @@ class PhysicalDeck:
     self.card_count = 52
 
   def pop(self):
-    card = input_until(
-      "Draw a card from the deck and tell me what you got: ",
+    card = Card(input_until(
+      "Draw for me, please: ",
       parse_card_is_ok,
-    )
+    ))
     self.card_count -= 1
-    return Card(card)
+    return card
 
   def __len__(self):
     return self.card_count
 
 #= define game =#
 
+def get_hand():
+  hand = set()
+
+  for i in range(1, 10 + 1):
+    while True:
+      card = Card(input_until(
+        f"Card #{i}: ",
+        lambda s: parse_card_is_ok,
+      ))
+
+      if card in hand:
+        print("Woah, you've already given me that card. Try again.")
+        continue
+
+      hand.add(card)
+      break
+
+  return hand
+
+def get_bot_hand():
+  print("What's my hand?")
+  return get_hand()
+
 def play(bot, *, bot_plays_first: bool):
   deck = PhysicalDeck()
   history = []
   discard = []
 
-  bot = bot
-  bot_hand = { deck.pop() for _ in range(10) }
-
+  bot_hand = get_bot_hand()
   is_bots_turn = bot_plays_first
 
   while True:
@@ -55,58 +88,68 @@ def play(bot, *, bot_plays_first: bool):
     if is_bots_turn:
       _, _, bot_ending = play_bots_turn(deck, history, discard, bot, bot_hand)
       if bot_ending: break
+
     else:
       _, _, player_ending = play_humans_turn(deck, history, discard)
       if player_ending: break
 
     is_bots_turn = not is_bots_turn
 
-  print(f"What were the human player's cards?")
-  human_hand = set()
-  for i in range(1, 11):
-    card = input_until(
-      "Card #{i}: ",
-      parse_card_is_ok,
-    )
-    human_hand.add(card)
+  end_game(bot_hand)
 
+def end_game(bot_hand):
+  print(f"What were the human player's cards?")
+  human_hand = get_hand()
   score = gin.score_hand(bot_hand, human_hand)
   print(f"Score, bot-relative, is {score}")
 
 def play_bots_turn(deck, history, discard, bot, bot_hand):
   draw_choice, discard_choice, bot_ending = gin.player_turn(deck, history, discard, bot, bot_hand)
 
+  if draw_choice == 'discard':
+    print(f"I'll take the {discard[-1]} from the discard; thanks.")
+
   if bot_ending:
-    print("Bot chooses to end the game.")
+    points = gin.points_leftover(bot_hand)
+    if points == 0:
+      print("Discard {discard_choice}: Gin!")
+    else:
+      print(f"I'll discard {discard_choice} to go down for {points}.")
   else:
-    print(f"Bot discards {discard_choice}.")
+    print(f"Discard {discard_choice}, please.")
 
   return (draw_choice, discard_choice, bot_ending)
 
 def play_humans_turn(deck, history, discard):
   draw_choice = input_until(
-    "Did the human draw from the deck or from the discard? ['deck'/'discard']: ",
-    lambda s: s in ['deck', 'discard']
+    "Did the human draw from the deck (1) or from the discard (2)? ['1'/'2']: ",
+    lambda s: s in ['1', '2']
   )
 
-  if draw_choice == 'deck':
-    deck.discard()
-  if draw_choice == 'discard':
+  if draw_choice == '1':
+    deck.card_count -= 1
+  if draw_choice == '2':
     discard.pop()
 
-  human_ending = 'y' == input_until(
-    "Is the human ending the game? ['y'/'n']: ",
-    lambda s: s in ['y', 'n'],
+  human_move = input_until(
+    "What did the human discard? Or are they ending the game? [card/'end']: ",
+    lambda s: s == 'end' or parse_card_is_ok(s),
   )
+
+  human_ending = human_move == 'end'
 
   if human_ending:
     # Not sure what the human discarded since played face-down
     discard_choice = None
-  if not human_ending:
-    discard_choice = Card(input_until(
-      "What did the human discard? ",
-      parse_card_is_ok,
-    ))
+  else:
+    discard_choice = human_move
     discard.append(discard_choice)
 
   return (draw_choice, discard_choice, human_ending)
+
+
+if __name__ == '__main__':
+  import sys
+  sys.path.append('bots/simple')
+  from simple_gin import simple_bot
+  play(simple_bot, bot_plays_first=True)

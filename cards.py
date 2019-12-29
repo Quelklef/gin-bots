@@ -2,20 +2,27 @@
 class Card:
   def __init__(self, card):
 
-    suit = card[0].lower()
-    rank = int(card[1:])
+    suit = card[0]
+    rank = card[1:]
 
-    assert rank in range(1, 13 + 1)
-    assert suit in 'cdhs'
+    assert rank in 'AJQKajqk' or int(rank) in range(1, 13 + 1)
+    assert suit in 'CDHScdhs'
 
-    self.suit = suit.lower()
+    suit = suit.upper()
+
+    ranks = { 'A': 1, 'J': 11, 'Q': 12, 'K': 13 }
+    rank = ranks.get(rank.upper()) or int(rank)
+
+    self.suit = suit.upper()
     self.rank = rank
 
   def __repr__(self):
     return f"Card({repr(str(self))})"
 
   def __str__(self):
-    return f"{self.suit.upper()}{str(self.rank).zfill(2)}"
+    ranks = { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' }
+    rank_str = ranks.get(self.rank) or str(self.rank)
+    return f"{self.suit}{rank_str}"
 
   @property
   def value(self):
