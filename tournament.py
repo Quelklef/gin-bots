@@ -25,30 +25,31 @@ class GinBot:
     )
     return result
 
+def compete(bot1, bot2, n=15):
+  """ pit two bots against each other """
+  scores = []
+
+  for i in range(n):
+    print(f"Hand #{i + 1}/{n}... ", end='', flush=True)
+
+    result = gin.play_hand(bot1, bot2)
+    scores.append(result)
+
+    if result == 0:
+      print("tie")
+    else:
+      winner = bot1 if result > 0 else bot2
+      winner_score = abs(result)
+      print(f"{winner} wins for {winner_score} points")
+
+  return scores
 
 def do_tournament(bots, n=20):
-  """ For a list of bots, pit each bot against every other """
+  """ for a list of bots, pit each bot against every other """
 
   # Pit every bot against each other
   matches = list(it.combinations(bots, 2))
-  scores = { match: [] for match in matches }
-
-  for match in matches:
-    bot1, bot2 = match
-    print(f"\n#= {bot1} vs {bot2} =#:")
-
-    for i in range(n):
-      print(f"Hand #{i + 1}/{n}... ", end='', flush=True)
-
-      result = gin.play_hand(bot1, bot2)
-      scores[match].append(result)
-
-      if result == 0:
-        print("tie")
-      else:
-        winner = bot1 if result > 0 else bot2
-        winner_score = abs(result)
-        print(f"{winner} wins for {winner_score} points")
+  scores = { match: compete(*match) for match in matches }
 
   print("\n\n\n#== Scoreboard ==#")
 
@@ -60,14 +61,10 @@ def do_tournament(bots, n=20):
     print(f"{bot1} vs {bot2}: mean = {mean:+.2f}, stdev = {stdev:.2f}")
 
 
-def main():
-  bot_names = os.listdir('bots/')
+bot_names = os.listdir('bots/')
 
-  bots = [ GinBot(bot_name, Path(f"bots/{bot_name}/{bot_name}.sh"))
-           for bot_name in bot_names ]
-
-  do_tournament(bots)
-
+bots = { bot_name: GinBot(bot_name, Path(f"bots/{bot_name}/{bot_name}.sh"))
+         for bot_name in bot_names }
 
 if __name__ == '__main__':
-  main()
+  do_tournament(bots)

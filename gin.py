@@ -115,7 +115,7 @@ def score_hand(our_hand, their_hand):
     # Calculate our score
     our_score = their_points - our_points
     # Check if gin or not
-    is_gin = our_deadwood == []
+    is_gin = len(our_deadwood) == 0
     if is_gin: our_score += GIN_BONUS
     return our_score
 
@@ -163,10 +163,13 @@ def do_turn(deck, history, discard, player1, hand1, player2, hand2, current_play
     return 0
 
   current_player_hand = hand1 if current_player == player1 else hand2
+  other_player_hand   = hand2 if current_player == player1 else hand1
   _, _, player_ending = player_turn(deck, history, discard, current_player, current_player_hand)
 
   if player_ending:
-    return score_hand(hand1, hand2)
+    score = score_hand(current_player_hand, other_player_hand)
+    score_sign = 1 if current_player_hand == hand1 else -1
+    return score_sign * score
 
 def player_turn(deck, history, discard, player, hand):
   """ have the player take a turn; return whether or not the player ends the game """
