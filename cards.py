@@ -12,7 +12,7 @@ class Card:
     self.rank = rank
 
   def __repr__(self):
-    return f"Card('{self.suit.upper()}{self.rank}')"
+    return f"Card({repr(str(self))})"
 
   def __str__(self):
     return f"{self.suit.upper()}{str(self.rank).zfill(2)}"

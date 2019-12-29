@@ -16,7 +16,7 @@ class GinBot:
     return self.name
 
   def call_exec(self, *args):
-    return communication.to_client(self.exec_loc, args)
+    return eval(communication.to_client(self.exec_loc, args))
 
   def __call__(self, hand, history):
     result = self.call_exec(

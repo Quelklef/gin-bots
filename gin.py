@@ -17,16 +17,16 @@ def is_book(cards):
 
 def is_run(cards):
   """ a straight flush with 3 or more cards """
-  return len(cards) in [3, 4] and all( prev_card.adjacent(card) for prev_card, card in pairwise(sorted(cards)) )
+  return len(cards) in [3, 4] and all(prev_card.adjacent(card) for prev_card, card in pairwise(sorted(cards)))
 
 def is_meld(cards):
   """ a book or a run """
   return is_book(cards) or is_run(cards)
 
 def get_melds(hand):
-  melds_3 = filter(is_meld, it.combinations(hand, 3))
-  melds_4 = filter(is_meld, it.combinations(hand, 4))
-  return map(set, it.chain(melds_4, melds_3))
+  melds_3 = filter(is_meld, map(frozenset, it.combinations(hand, 3)))
+  melds_4 = filter(is_meld, map(frozenset, it.combinations(hand, 4)))
+  return frozenset({*melds_3, *melds_4})
 
 def conflicting(melds):
   """ two melds contain the same card """
@@ -35,19 +35,19 @@ def conflicting(melds):
 def sum_cards_value(cards):
   return sum(card.value for card in cards)
 
-def arrange_hand(hand, other_melds={}):
+def arrange_hand(hand):
   """ Arrange a hand into (melds, deadwood)
   If `other_melds` is included, allows cards in `hand` to be tacked
   onto those melds when creating melds """
-  # https://discardoverflow.com/a/542706/4781072
+  # adapted from https://discardoverflow.com/a/542706/4781072
 
   all_possible_melds = get_melds(hand)
   meld_sets = powerset(all_possible_melds)
   valid_meld_sets = it.filterfalse(conflicting, meld_sets)
 
   def deadwood(meld_set):
-    meld_cards = set(flatten(meld_set))
-    deadwood = hand - meld_cards
+    meld_cards = frozenset(flatten(meld_set))
+    deadwood = frozenset(hand - meld_cards)
     return deadwood
 
   def points_leftover(meld_set):
@@ -56,10 +56,13 @@ def arrange_hand(hand, other_melds={}):
   best_meld_set = min(valid_meld_sets, key=points_leftover)
   return best_meld_set, deadwood(best_meld_set)
 
-def points_leftover(hand):
-  """ how many deadwood points does this hand have? """
-  melds, deadwood = arrange_hand(hand)
-  return sum_cards_value(deadwood)
+def points_leftover(our_hand, their_hand=None):
+  """ How many deadwood points does this hand have?
+  If a second hand is provided, deadwood in this hand will be played on the other hand's melds. """
+  if their_hand: their_melds, their_deadwood = arrange_hand(their_hand)
+  our_melds, our_deadwood = arrange_hand(our_hand)
+  if their_hand: our_deadwood = frozenset(it.filterfalse(extends_any_meld(their_melds), our_deadwood))
+  return sum_cards_value(our_deadwood)
 
 def extends_any_meld(melds):
   """ returns a predicate of a card that decides whether that card can
@@ -92,8 +95,8 @@ def score_hand(our_hand, their_hand):
   their_melds, their_deadwood = arrange_hand(their_hand)
 
   # Play our deadwood on their melds and vice-versa
-  our_deadwood = it.filterfalse(extends_any_meld(their_melds), our_deadwood)
-  their_deadwood = it.filterfalse(extends_any_meld(our_melds), their_deadwood)
+  our_deadwood = frozenset(it.filterfalse(extends_any_meld(their_melds), our_deadwood))
+  their_deadwood = frozenset(it.filterfalse(extends_any_meld(our_melds), their_deadwood))
 
   # Calculate number of points in each hand
   our_points = sum_cards_value(our_deadwood)
@@ -145,7 +148,7 @@ def play_hand(player1, player2):
   other_hand = hand2
 
   def switch_players():
-    nonlocal player
+    nonlocal player, hand, other_hand
     if player == player1:
       player, hand, other_hand = player2, hand2, hand1
     elif player == player2:
@@ -157,11 +160,14 @@ def play_hand(player1, player2):
 
   while True:
 
+    assert hand1.intersection(hand2) == set()
+
     # We choose to make the deck running out be a tie
     if deck == []:
       return 0
 
-    # Play the turn
+    #= Ask the client to draw from deck or discard  =#
+
     draw_choice = message()
 
     if draw_choice == 'deck':
@@ -176,20 +182,24 @@ def play_hand(player1, player2):
       raise ValueError(f"Expected either 'deck' or 'discard', not {repr(draw_choice)}.")
 
     hand.add(drawn_card)
-    action = message()
-    if action == 'end':
-      # end the game
-      if points_leftover(hand) > MAX_POINTS_TO_GO_DOWN:
-        raise ValueError(f"Cannot end on more than {MAX_POINTS_TO_GO_DOWN} points.")
 
-      return score_hand(hand, other_hand)
+    #= Ask the client to discard a card =#
 
-    # else, discarding a card
-    discard_choice = Card(action)
+    discard_choice, do_end = message()
+    discard_choice = Card(discard_choice)
+
+    if discard_choice not in hand:
+      raise ValueError(f"Cannot discard {discard_choice} since it's not in your hand.")
+
     discard.append(discard_choice)
     hand.remove(discard_choice)
 
-    history.append((draw_choice, discard_choice))
+    if do_end:  # end the game
+      if points_leftover(hand) > MAX_POINTS_TO_GO_DOWN:
+        raise ValueError(f"Cannot end on more than {MAX_POINTS_TO_GO_DOWN} points.")
+      return score_hand(hand1, hand2)
 
-    # Switch players
+    #= End the turn =#
+
+    history.append((draw_choice, discard_choice))
     switch_players()

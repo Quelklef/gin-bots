@@ -1,2 +1,2 @@
 #!/bin/sh
-python3 bot.py
+python3 random_gin.py
