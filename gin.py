@@ -141,65 +141,73 @@ def play_hand(player1, player2):
   hand1 = { deck.pop() for _ in range(10) }
   hand2 = { deck.pop() for _ in range(10) }
 
-  # Whose turn is it?
-  player = player1
-  # Reference to player's hand
-  hand = hand1
-  other_hand = hand2
-
-  def switch_players():
-    nonlocal player, hand, other_hand
-    if player == player1:
-      player, hand, other_hand = player2, hand2, hand1
-    elif player == player2:
-      player, hand, other_hand = player1, hand1, hand2
-
-  def message():
-    """ send the player the current state and get their response """
-    return player({*hand}, [*history])
+  current_player = player1
 
   while True:
+    result = do_turn(deck, discard, history, player1, hand1, player2, hand2, current_player)
 
-    assert hand1.intersection(hand2) == set()
+    if result is not None:
+      end_score = result
+      return end_score
 
-    # We choose to make the deck running out be a tie
-    if deck == []:
-      return 0
+    # switch players
+    current_player = {
+      player1: player2,
+      player2: player1,
+    }[current_player]
 
-    #= Ask the client to draw from deck or discard  =#
+def do_turn(deck, discard, history, player1, hand1, player2, hand2, current_player):
+  """ do a turn, returning the score or None if the game isn't done """
+  # We choose to make the deck running out be a tie
+  if len(deck) == 0:
+    return 0
 
-    draw_choice = message()
+  current_player_hand = hand1 if current_player == player1 else hand2
+  player_ending = player_turn(deck, discard, history, current_player, current_player_hand)
 
-    if draw_choice == 'deck':
-      drawn_card = deck.pop()
+  if player_ending:
+    return score_hand(hand1, hand2)
 
-    elif draw_choice == 'discard':
-      if len(discard) == 0:
-        raise ValueError("Cannot draw from an empty discard!")
-      drawn_card = discard.pop()
+def player_turn(deck, discard, history, player, hand):
+  """ have the player take a turn; return whether or not the player ends the game """
 
-    else:
-      raise ValueError(f"Expected either 'deck' or 'discard', not {repr(draw_choice)}.")
+  draw_choice                   = player_draw   (deck, discard, history, player, hand)
+  discard_choice, player_ending = player_discard(deck, discard, history, player, hand)
 
-    hand.add(drawn_card)
+  history.append((draw_choice, discard_choice))
 
-    #= Ask the client to discard a card =#
+  return player_ending
 
-    discard_choice, do_end = message()
-    discard_choice = Card(discard_choice)
+def player_draw(deck, discard, history, player, hand):
+  """ have the player draw a card """
+  draw_choice = player({*hand}, [*history])
 
-    if discard_choice not in hand:
-      raise ValueError(f"Cannot discard {discard_choice} since it's not in your hand.")
+  if draw_choice == 'deck':
+    drawn_card = deck.pop()
 
-    discard.append(discard_choice)
-    hand.remove(discard_choice)
+  elif draw_choice == 'discard':
+    if len(discard) == 0:
+      raise ValueError("Cannot draw from an empty discard!")
+    drawn_card = discard.pop()
 
-    if do_end:  # end the game
-      if points_leftover(hand) > MAX_POINTS_TO_GO_DOWN:
-        raise ValueError(f"Cannot end on more than {MAX_POINTS_TO_GO_DOWN} points.")
-      return score_hand(hand1, hand2)
+  else:
+    raise ValueError(f"Expected either 'deck' or 'discard', not {repr(draw_choice)}.")
 
-    #= End the turn =#
+  hand.add(drawn_card)
 
-    history.append((draw_choice, discard_choice))
-    switch_players()
+def player_discard(deck, discard, history, player, hand):
+  """ have the player discard a card and optionally end the game """
+  discard_choice, do_end = player({*hand}, [*history])
+  discard_choice = Card(discard_choice)
+
+  if discard_choice not in hand:
+    raise ValueError(f"Cannot discard {discard_choice} since it's not in your hand.")
+
+  discard.append(discard_choice)
+  hand.remove(discard_choice)
+
+  if do_end:  # end the game
+    if points_leftover(hand) > MAX_POINTS_TO_GO_DOWN:
+      raise ValueError(f"Cannot end on more than {MAX_POINTS_TO_GO_DOWN} points.")
+
+  return discard_choice, do_end
