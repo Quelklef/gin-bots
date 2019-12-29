@@ -68,6 +68,9 @@ def card_to_art_but_just_a_lil(card):
   return color_art(art, colors[card.suit])
 
 def discard_to_art(discard):
+  if not discard:
+    return "\n" * 3
+
   discard = [*discard]
   last = discard.pop()
   return join_art( list(map(card_to_art_but_just_a_lil, discard)) + [card_to_art(last)], sep='' )
@@ -135,4 +138,5 @@ if __name__ == '__main__':
   sys.path.append('bots/simple')
   from simple_gin import simple_bot
   import gin
-  gin.play_hand(simple_bot, human_bot)
+  results = gin.play_hand(human_bot, simple_bot)
+  print(f"end score: {results}")
