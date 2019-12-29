@@ -50,3 +50,10 @@ class Card:
 all_cards = { Card(f"{suit}{rank}")
               for suit in 'cdhs'
               for rank in range(1, 13 + 1) }
+
+def parse_card_is_ok(string):
+  try:
+    Card(string)
+    return True
+  except ValueError:
+    return False

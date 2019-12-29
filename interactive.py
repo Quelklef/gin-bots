@@ -13,22 +13,8 @@ Of course, you can replace the simple bot with any bot
 
 import gin
 import client
-from cards import Card
-
-def input_until(string, predicate):
-  while True:
-    val = input(string)
-    if predicate(val):
-      return val
-    else:
-      print("What? Try again.")
-
-def parse_card_is_ok(string):
-  try:
-    Card(string)
-    return True
-  except ValueError:
-    return False
+from cards import Card, parse_card_is_ok
+from util import input_until
 
 #= define physical deck =#
 

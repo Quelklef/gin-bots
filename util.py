@@ -22,3 +22,11 @@ def union(xs, start=None):
   for x in xs:
     result |= x
   return result
+
+def input_until(string, predicate):
+  while True:
+    val = input(string)
+    if predicate(val):
+      return val
+    else:
+      print("What? Try again.")
