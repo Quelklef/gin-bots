@@ -1,8 +1,17 @@
 """ a bot that relays to the human at the computer """
 
+from sty import fg, bg, ef, rs
+
 import client
 from util import input_until
 from gin import calculate_discard
+
+colors = {
+  'C': ef.bold,
+  'D': fg.red + ef.bold,
+  'H': fg.red + ef.bold,
+  'S': ef.bold,
+}
 
 def print_state(hand, history):
   discard = gin.calculate_discard(history)
@@ -24,28 +33,39 @@ def print_state(hand, history):
 def prettier_rank(card):
   return 'X' if card.rank == 10 else card.pretty_rank
 
+def color_art(art, color):
+  return '\n'.join( color + line + rs.all for line in art.split('\n') )
+
 def card_to_art(card, idx=None):
   string = """
-@ @ @ @
-@     @
-@  R  @
-@     @
-@ @ @ @"""[1:]
+╭───────╮
+│ @ @ @ │
+│       │
+│ R R R │
+│       │
+│ @ @ @ │
+╰───────╯"""[1:]
+
+  string = color_art(string, colors[card.suit])
 
   if idx:
-   string += f"\n ({idx:>3}) "
+   string += f"\n  ({idx:>3})  "
 
-  return string.replace('@', card.sigil).replace('R', prettier_rank(card))
+  art = string.replace('@', card.sigil).replace('R', prettier_rank(card))
+  return art
 
 def card_to_art_but_just_a_lil(card):
-  string = f"""
-@ @  
-@    
-@  {prettier_rank(card)} 
-@    
-@ @  """[1:]
+  string = """
+╭───
+│ @ 
+│   
+│ R 
+│   
+│ @ 
+╰───"""[1:]
 
-  return string.replace('@', card.sigil)
+  art = string.replace('@', card.sigil).replace('R', prettier_rank(card))
+  return color_art(art, colors[card.suit])
 
 def discard_to_art(discard):
   discard = [*discard]
