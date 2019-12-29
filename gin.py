@@ -94,8 +94,7 @@ def score_hand(our_hand, their_hand):
   # Now arrange the their hand
   their_melds, their_deadwood = arrange_hand(their_hand)
 
-  # Play our deadwood on their melds and vice-versa
-  our_deadwood = frozenset(it.filterfalse(extends_any_meld(their_melds), our_deadwood))
+  # Play their deadwood on our melds
   their_deadwood = frozenset(it.filterfalse(extends_any_meld(our_melds), their_deadwood))
 
   # Calculate number of points in each hand
