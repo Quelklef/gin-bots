@@ -93,7 +93,7 @@ def choose_discard(hand, history):
     lambda s: parse_int_ok(s) and int(s) in range(1, len(hand) + 1),
   ))
 
-  return hand[card_idx]
+  return hand[card_idx - 1]
 
 def parse_int_ok(s):
   try:
