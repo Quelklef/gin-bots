@@ -113,9 +113,14 @@ def play_humans_turn(deck, history, discard):
     lambda s: s in ['1', '2']
   )
 
-  if draw_choice == '1':
+  draw_choice = {
+    '1': 'deck',
+    '2': 'discard',
+  }[draw_choice]
+
+  if draw_choice == 'deck':
     deck.card_count -= 1
-  if draw_choice == '2':
+  if draw_choice == 'discard':
     discard.pop()
 
   human_move = input_until(
@@ -131,6 +136,8 @@ def play_humans_turn(deck, history, discard):
   else:
     discard_choice = Card(human_move)
     discard.append(discard_choice)
+
+  history.append((draw_choice, discard_choice))
 
   return (draw_choice, discard_choice, human_ending)
 
