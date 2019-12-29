@@ -38,3 +38,31 @@ test_hand3 = {
   Card('C9'),
   Card('S9'),
 }
+
+# starting hand, 11 cards
+test_hand4 = {
+  Card('SA'),
+  Card('D3'),
+  Card('D4'),
+  Card('C5'),
+  Card('D6'),
+  Card('D7'),
+  Card('H8'),
+  Card('H9'),
+  Card('DQ'),
+  Card('HQ'),
+  Card('HK'),
+}
+
+test_hand5 = {
+  Card('D3'),
+  Card('D4'),
+  Card('D6'),
+  Card('D7'),
+  Card('H8'),
+  Card('H9'),
+  Card('DQ'),
+  Card('HQ'),
+  Card('HK'),
+  Card('DK'),
+}
