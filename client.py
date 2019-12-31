@@ -1,6 +1,7 @@
 """ Helper module for gin bots that are written in Python """
 
 from cards import Card
+import cards
 import gin
 
 def calculate_discard(history):
@@ -46,7 +47,7 @@ def calculate_seen(hand, history):
   played = { discard_choice for draw_choice, discard_choice in history }
   return played | hand
 
-def caluclate_unseen(hand, history):
+def calculate_unseen(hand, history):
   return cards.all_cards - calculate_seen(hand, history)
 
 # == #
