@@ -43,7 +43,7 @@ class Card:
 
   @property
   def _tuple(self):
-    return (self.suit, self.rank)
+    return (self.rank, self.suit)
 
   def __eq__(self, other): return self._tuple == other._tuple
   def __ne__(self, other): return self._tuple != other._tuple
