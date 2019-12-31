@@ -1,5 +1,4 @@
-import os
-import subprocess
+import os, subprocess, argparse, sys
 from pathlib import Path
 import itertools as it
 import statistics as stat
@@ -25,14 +24,21 @@ class GinBot:
     )
     return result
 
-def compete(bot1, bot2, n=15):
+def compete(bot1, bot2, num_hands=15):
   """ pit two bots against each other """
+  infinite = num_hands is 0
+
   scores = []
 
   print(f"\n#= {bot1} vs {bot2} =#")
 
-  for i in range(n):
-    print(f"Hand #{i + 1}/{n}... ", end='', flush=True)
+  if infinite:
+    range_it = it.count(0)
+  else:
+    range_it = range(num_hands)
+
+  for i in range_it:
+    print(f"Hand #{i + 1}/{num_hands}... ", end='', flush=True)
 
     result = gin.play_hand(bot1, bot2)
     scores.append(result)
@@ -44,29 +50,55 @@ def compete(bot1, bot2, n=15):
       winner_score = abs(result)
       print(f"{winner} wins for {winner_score} points")
 
+    if infinite:
+      mean, stdev = mean_and_stdev(scores)
+      print(f"cumulative statistics: mean = {mean:+.2f}, stdev = {stdev:.2f}")
+
   return scores
 
-def do_tournament(bots):
+def do_tournament(bots, num_hands=15):
   """ for a list of bots, pit each bot against every other """
 
   # Pit every bot against each other
   matches = list(it.combinations(bots, 2))
-  scores = { match: compete(*match) for match in matches }
+  match_results = { match: compete(*match, num_hands=num_hands) for match in matches }
+  print_scoreboard(match_results)
 
+def print_scoreboard(match_results):
   print("\n\n#== Scoreboard ==#")
 
-  for match in matches:
+  for match, scores in match_results.items():
     bot1, bot2 = match
-    games = scores[match]
-    mean = stat.mean(games)
-    stdev = stat.stdev(games)
+    mean, stdev = mean_and_stdev(scores)
     print(f"{bot1} vs {bot2}: mean = {mean:+.2f}, stdev = {stdev:.2f}")
 
+def mean_and_stdev(games):
+  assert(type(games) is list)
+  assert(len(games) is not 0)
+  if len(games) is 1:
+    return games[0], 0
+  return stat.mean(games), stat.stdev(games)
 
-bot_names = os.listdir('bots/')
 
-bots = { bot_name: GinBot(bot_name, Path(f"bots/{bot_name}/{bot_name}.sh"))
-         for bot_name in bot_names }
+parser = argparse.ArgumentParser(description='Run some gin bots!')
+parser.add_argument('bot_names', nargs='*')
+parser.add_argument('-n', '--num_hands', type=int, default=15, help='the number of hands of play per match, defaults to 15, 0 means infinite')
 
 if __name__ == '__main__':
-  do_tournament(bots.values())
+  args = parser.parse_args()
+
+  if len(args.bot_names) is 0:
+    bot_names = os.listdir('bots/')
+  elif len(args.bot_names) is 1:
+    print("need to specify two or more bots!")
+    sys.exit(1)
+  else:
+    bot_names = args.bot_names
+
+  try:
+    bots = { bot_name: GinBot(bot_name, Path(f"bots/{bot_name}/{bot_name}.sh"))
+             for bot_name in args.bot_names }
+    do_tournament(bots.values(), num_hands=args.num_hands)
+  except FileNotFoundError as e:
+    print(f'\n {e.filename} not found')
+    sys.exit(1)
