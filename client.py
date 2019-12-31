@@ -44,7 +44,7 @@ def calculate_other_hand(history):
 def calculate_seen(hand, history):
   """ Calculate all the cards that definitely ARENT in the deck """
   played = { discard_choice for draw_choice, discard_choice in history }
-  return played + hand
+  return played | hand
 
 def caluclate_unseen(hand, history):
   return cards.all_cards - calculate_seen(hand, history)
