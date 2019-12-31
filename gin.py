@@ -73,17 +73,6 @@ def can_end(hand):
   """ is the player able to end the game, given the current hand? """
   return points_leftover(hand) <= MAX_POINTS_TO_GO_DOWN
 
-def calculate_discard(history):
-  """ calculate the current discard pile from a history """
-  discard = []
-
-  for draw_choice, discard_choice in history:
-    if draw_choice == 'discard':
-      discard.pop()
-    discard.append(discard_choice)
-
-  return discard
-
 def score_hand(our_hand, their_hand):
   """ Accepts two hands. The first hand is that of the player who ended the game.
   Calculates the number of points that that player scores. """
