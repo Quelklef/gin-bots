@@ -85,6 +85,7 @@ class Channel:
     chunks = []
     while True:
       read = self.fifo.read(self.chunk_size + 2).strip()
+      assert read != '', "Empty read, meaning the other end of the channel crashed"
 
       marker = read[0]
       completed = { '!': True, '+': False }[marker]
@@ -104,7 +105,6 @@ class Channel:
 
     self._log(f"Received '{message}'")
 
-    assert message != '', "Received empty message, meaning the other end of the channel crashed"
     return message
 
 def chunk_string(string, chunk_size):
