@@ -36,15 +36,14 @@ def play_bot(bot):
 
       if turn == 'theirs':
         # get the opponent's move
-        draw_location, discard_choice, end_str, reshuffle_str = read('opponent_turn').split(';')
+        draw_location, discard_choice, end_str = read('opponent_turn').split(';')
         discard_choice = Card(discard_choice)
         do_end = { 'end': True, 'continue': False }[end_str]
-        do_reshuffle = { 'reshuffle': True, 'continue': False }[reshuffle_str]
 
         if do_end:
           break
 
-        move = (draw_location, discard_choice, do_end, do_reshuffle)
+        move = (draw_location, discard_choice, do_end)
         next(bot)
         bot.send(move)
 
@@ -97,6 +96,10 @@ def make_bot(choose_draw, choose_discard, should_end):
   # Our hand
   hand       = set()
 
+  # Deck size
+  # Need to keep track of in order to know when a reshuffle happens
+  deck_size =  52
+
   # History of moves
   history    = []
 
@@ -106,17 +109,26 @@ def make_bot(choose_draw, choose_discard, should_end):
   # Cards that are definitely in the other hand
   other_hand = set()
 
-  def event__opponent_turn(draw_location, drawn_card, discard_choice, do_end, do_reshuffle):
+  def deck_pop():
+    nonlocal deck_size
+    deck_size -= 1
+
+    if deck_size == 0:
+      # Reshuffle happens
+      deck_size = 0
+      discard.clear()
+
+  def event__opponent_turn(draw_location, drawn_card, discard_choice, do_end):
     """ Opponent's turn passed. `drawn_card` is a card if known, else None. """
-    history.append((draw_location, discard_choice, do_end, do_reshuffle))
+    deck_pop()
+    history.append((draw_location, discard_choice, do_end))
     discard.append(discard_choice)
     if drawn_card is not None:
       other_hand.add(drawn_card)
-    if do_reshuffle:
-      discard.clear()
 
   def event__drew(draw_location, drawn_card):
     """ Drew a card. """
+    deck_pop()
     hand.add(drawn_card)
 
   def event__discarded(discard_choice):
@@ -157,7 +169,7 @@ def make_bot(choose_draw, choose_discard, should_end):
   while True:
 
     if active_player == 'them':
-      turn = draw_location, discard_choice, do_end, do_reshuffle = yield
+      turn = draw_location, discard_choice, do_end = yield
       yield
 
       if draw_location == 'discard':
@@ -165,7 +177,7 @@ def make_bot(choose_draw, choose_discard, should_end):
       else:
         drawn_card = None
 
-      event__opponent_turn(draw_location, drawn_card, discard_choice, do_end, do_reshuffle)
+      event__opponent_turn(draw_location, drawn_card, discard_choice, do_end)
 
       if do_end:
         break
