@@ -5,54 +5,6 @@ import cards
 import gin
 from channels import Channel
 
-def calculate_discard(history):
-  """ calculate the current discard pile from a history """
-  discard = []
-
-  for draw_choice, discard_choice in history:
-    if draw_choice == 'discard':
-      discard.pop()
-    discard.append(discard_choice)
-
-  return discard
-
-def calculate_other_hand(history):
-  """ From a history, calculate the cards that are definitely in the other player's hand
-  Assumes that the current turn is 'our' turn. """
-
-  # whose turn was the first turn
-  their_turn = len(history) % 2 != 0
-
-  their_hand = set()
-
-  # discard pile
-  discard = []
-
-  # simulate game
-  for draw_choice, discard_choice in history:
-    if draw_choice == 'discard':
-      card = discard.pop()
-      if their_turn:
-        their_hand.add(card)
-
-    discard.append(discard_choice)
-    if their_turn:
-      their_hand.discard(discard_choice)
-
-    their_turn = not their_turn
-
-  return their_hand
-
-def calculate_seen(hand, history):
-  """ Calculate all the cards that definitely ARENT in the deck """
-  played = { discard_choice for draw_choice, discard_choice in history }
-  return played | hand
-
-def calculate_unseen(hand, history):
-  return cards.all_cards - calculate_seen(hand, history)
-
-# == #
-
 def play_bot(bot):
   """ Accepts a bot and plays it against the server.
   The bot must be a generator which accepts and yields the
@@ -122,14 +74,14 @@ def play_bot(bot):
 
 def make_bot(choose_draw, choose_discard, should_end):
   """
-  Takes three functions `choose_draw`, `choose_discard`, and `should_end` and returns a bot.
-  All three functions should take (hand, history, derived), where
+  Takes three functions `choose_draw`, `choose_discard`, and `should_end` and returns a gin bot.
+  All three functions should take (hand, history, derivables), where
 
     `hand`: The bot's current hand
 
     `history`: The history of the game, as (draw_location, discard_choice) pairs
 
-    `derived`: (TODO) A bunch of information that is derivable from hand and history
+    `derivables`: A bunch of information that is derivable from hand and history
     but done in this function for convenience and efficiency. Contains the following keys:
       "discard"   : the discard pile, ordered chronologically
       "seen"      : cards that have been seen in the game so far
@@ -145,52 +97,117 @@ def make_bot(choose_draw, choose_discard, should_end):
     `choose_discard`: What hand the bot wants to discard. Called after `choose_draw`.
 
     `should_end`: Whether or not the bot wants to end the game. Called after `choose_discard`.
+
+  Bots MUST NOT mutate any of these values.
   """
 
-  # our hand
-  hand = set()
-  # history of moves
-  history = []
+  # Our hand
+  hand       = set()
 
-  # TODO: keep track of derivable values
+  # History of moves
+  history    = []
+
+  # Discard pile
+  discard    = []
+
+  # Cards that we have seen
+  seen       = set()
+
+  # Cards that we have not seen
+  unseen     = set()
+
+  # Cards that are definitely in the other hand
+  other_hand = set()
+
+  def event__opponent_turn(draw_location, drawn_card, discard_choice_or_end):
+    """ Opponent's turn passed. `drawn_card` is a card if known, else None. """
+    history.append((draw_location, discard_choice_or_end))
+    if discard_choice_or_end != 'end':
+      discard_choice = discard_choice_or_end
+      discard.append(discard_choice)
+      seen.add(discard_choice)
+      unseen.discard(discard_choice)
+    if drawn_card is not None:
+      other_hand.add(drawn_card)
+
+  def event__drew(draw_location, drawn_card):
+    """ Drew a card. """
+    hand.add(drawn_card)
+    seen.add(drawn_card)
+
+  def event__discarded(discard_choice):
+    """ Discarded a card. """
+    hand.remove(discard_choice)
+    discard.append(discard_choice)
+    seen.add(discard_choice)
+
+  def event__ending(do_end):
+    """ Whether or not we're ending the game. """
+    pass
+
+  def event__turn(draw_location, drawn_location, discard_choice_or_end):
+    """ Turn passed. Isomorphic to putting code in drew, discarded, and ending. """
+    history.append((draw_location, discard_choice_or_end))
+
+  # These values are split into two groups
+  # The first groups is the `hand` and `discard` since it encodes
+  # the entire game state for a player.
+  # The second is all the rest, which we call 'derivables' since
+  # they /could/ be derived from the hand and history. They are
+  # instead calculated here for convenience and afficiency.
+
+  derivables = {
+    "discard": discard,
+    "seen": seen,
+    "unseen": unseen,
+    "other_hand": other_hand,
+  }
 
   # Who starts? either 'ours' or 'theirs'
   starting_hand, am_starting = yield
   yield
 
-  turn = 'ours' if am_starting else 'theirs'
-  hand.update(starting_hand)
+  active_player = 'us' if am_starting else 'them'
+
+  # Starting hand is encoded as a bunch of draws
+  for card in starting_hand:
+    event__drew('deck', card)
 
   while True:
 
-    if turn == 'theirs':
-      move = yield
+    if active_player == 'them':
+      turn = draw_location, discard_choice_or_end = yield
       yield
-      history.append(move)
 
-    elif turn == 'ours':
-      discard = calculate_discard(history)
+      drawn_card = discard[-1] if draw_location == 'discard' else None
+      event__opponent_turn(draw_location, drawn_card, discard_choice_or_end)
 
+    elif active_player == 'us':
       if len(discard) == 0:
         draw_location = 'deck'
       else:
-        draw_location = choose_draw({*hand}, [*history])
+        draw_location = choose_draw(hand, history, derivables)
       drawn_card = yield draw_location
 
-      discard_choice = choose_discard(hand, history)
-      do_end = gin.can_end(hand) and should_end({*hand}, [*history])
+      event__drew(draw_location, drawn_card)
+
+      discard_choice = choose_discard(hand, history, derivables)
+      do_end = gin.can_end(hand) and should_end(hand, history, derivables)
 
       yield (discard_choice, do_end)
 
-      hand.remove(discard_choice)
-      move = (draw_location, discard_choice)
-      history.append(move)
+      event__discarded(discard_choice)
+      event__ending(do_end)
+
+      discard_choice_or_end = 'end' if do_end else discard_choice
+      event__turn(draw_location, drawn_card, discard_choice_or_end)
 
     else:
-      assert False
+      assert False, f"Unknown active player {repr(active_player)}"
 
     # Switch turns
-    turn = {
-      'ours': 'theirs',
-      'theirs': 'ours',
-    }[turn]
+    active_player = {
+      'us': 'them',
+      'them': 'us',
+    }[active_player]
+

@@ -6,15 +6,15 @@ sys.path.append('../..')
 
 import client
 
-def choose_draw(hand, history):
+def choose_draw(hand, history, derivables):
   """ choose where to draw a card from """
   return random.choice(['deck', 'discard'])
 
-def choose_discard(hand, history):
+def choose_discard(hand, history, derivables):
   """ choose which card to discard """
   return random.choice([*hand])
 
-def should_end(hand, history):
+def should_end(hand, history, derivables):
   """ choose whether or not to go down """
   return random.random() < 0.3
 

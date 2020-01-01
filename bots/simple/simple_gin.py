@@ -4,39 +4,36 @@ import random
 import sys
 sys.path.append('../..')
 
-import functools as ft
-
 import gin
 import client
 
-def choose_draw(hand, history):
+def choose_draw(hand, history, derivables):
   """ choose where to draw a card from """
 
-  discard = client.calculate_discard(history)
-  their_hand = client.calculate_other_hand(history)
+  discard = derivables['discard']
+  their_hand = derivables['other_hand']
 
   current_points = gin.points_leftover(hand, their_hand)
   theoretical_points = gin.points_leftover(hand | {discard[-1]}, their_hand)
 
   if theoretical_points < current_points:
     return 'discard'
+  else:
+    return 'deck'
 
-  return 'deck'
-
-def choose_discard(hand, history):
+def choose_discard(hand, history, derivables):
   """ choose which card to discard """
 
-  their_hand = client.calculate_other_hand(history)
+  their_hand = derivables['other_hand']
 
-  def resultant_score(discard_choice):
+  def score_from_removing(discard_choice):
     return gin.points_leftover(hand - {discard_choice}, their_hand)
 
-  melds, deadwood = gin.arrange_hand(hand)
+  return min(hand, key=score_from_removing)
 
-  return min(hand, key=resultant_score)
-
-def should_end(hand, history):
+def should_end(hand, history, derivables):
   """ choose whether or not to go down """
+
   return True
 
 simple_bot = client.make_bot(choose_draw, choose_discard, should_end)
