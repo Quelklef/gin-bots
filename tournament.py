@@ -180,10 +180,12 @@ if __name__ == '__main__':
   else:
     bot_names = args.bot_names
 
-  try:
-    bots = { bot_name: GinBot(bot_name, Path(f"bots/{bot_name}/{bot_name}.sh"))
-             for bot_name in args.bot_names }
-    do_tournament(bots.values(), num_hands=args.num_hands)
-  except FileNotFoundError as e:
-    print(f'\n {e.filename} not found')
-    sys.exit(1)
+  bots = set()
+  for bot_name in args.bot_names:
+    bot_path = Path(f"bots/{bot_name}/{bot_name}.sh")
+    if not os.path.exists(bot_path):
+      print(f"No known bot named '{bot_name}'.")
+      sys.exit(1)
+    bots.add(GinBot(bot_name, bot_path))
+
+  do_tournament(bots, num_hands=args.num_hands)
