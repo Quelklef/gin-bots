@@ -26,11 +26,11 @@ sys.excepthook = exception_handler
 # The server is responsible for starting the client
 
 class Channel:
-  def __init__(self, name, location, mode, *, max_msg_size=150):
+  def __init__(self, name, location, mode, *, chunk_size=50):
     self.name = name
     self.location = location
     self.mode = mode
-    self.max_msg_size = max_msg_size
+    self.chunk_size = chunk_size
 
     logger.info(f"__init__ for channel '{self.name}' at '{self.location}'.")
 
@@ -68,14 +68,56 @@ class Channel:
 
   def send(self, message: str):
     assert isinstance(message, str)
-    assert len(message) <= self.max_msg_size, "Message too long"
+
     self._log(f"Delivering '{message}'")
-    self.fifo.write(message.ljust(self.max_msg_size))
+
+    for chunk, continues in chunk_string(message, self.chunk_size):
+      # If the message done, prepend and append a '!' a '!'; else, use a '+'
+      marker = '+' if continues else '!'
+      self.fifo.write(marker + (chunk + marker).ljust(self.chunk_size + 1))
+
     self.fifo.flush()
 
   def recv(self):
     self._log("Waiting")
-    message = self.fifo.read(self.max_msg_size).strip()
+
+    chunks = []
+    while True:
+      read = self.fifo.read(self.chunk_size + 2).strip()
+
+      marker = read[0]
+      completed = { '!': True, '+': False }[marker]
+
+      if completed:
+        i = read.rindex('!')
+        chunk = read[1:i]
+      else:
+        chunk = read[1:-1]
+
+      chunks.append(chunk)
+
+      if completed:
+        break
+
+    message = ''.join(chunks)
+
     self._log(f"Received '{message}'")
+
     assert message != '', "Received empty message, meaning the other end of the channel crashed"
     return message
+
+def chunk_string(string, chunk_size):
+  """ yield `chunk_size` characters at a time and a boolean noting whether or not there's more to come.
+  chunk_iter("12345678", 3) --> ("123", True), ("456", True), ("78", False) """
+
+  while True:
+    chunk = string[:chunk_size]
+    string = string[chunk_size:]
+
+    continues = string != ''
+    yield (chunk, continues)
+
+    if not continues:
+      break
+
+
