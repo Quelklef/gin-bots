@@ -136,7 +136,7 @@ def play_hand(player1, player2):
   Now the turns begin. Each turn looks like the following:
 
     1. The player is sent the turn that their opponent took,
-       as a tuple (discard_location, discard_choice)
+       as a tuple (draw_location, discard_choice, discard_location)
        where discard_location is either 'deck' or 'discard'
        and discard_choice is a Card object.
 
@@ -190,10 +190,15 @@ def play_hand(player1, player2):
       # If the other player's turn ended the game, end it now
       # We do this after sending the turn to the active player so that
       # the client is able to recognize that the game is over and terminate
-      draw_location, discard_choice_or_end = previous_turn
-      if discard_choice_or_end == 'end':
+      draw_location, discard_choice, do_end = previous_turn
+      discard.append(discard_choice)
+      if do_end:
         end_score = score_hand(hand1, hand2)
         return end_score
+
+    # deck running out is a tie
+    if len(deck) == 0:
+      return 0
 
     # Get where the player wants to draw from
     draw_location = active_player.recv()
@@ -218,10 +223,7 @@ def play_hand(player1, player2):
     active_hand.remove(discard_choice)
     discard.append(discard_choice)
 
-    if do_end:
-      history.append( (draw_location, 'end') )
-    else:
-      history.append( (draw_location, discard_choice) )
+    history.append((draw_location, discard_choice, do_end))
 
     swap_players()
 

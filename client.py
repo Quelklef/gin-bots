@@ -16,7 +16,6 @@ def play_bot(bot):
 
     def read(expected_desc):
       message = channel_in.recv()
-      assert message != '', "Server crashed; terminating client."
       desc, payload = message.split(':')
       assert desc == expected_desc, f"Server and client have fallen out of sync. Server at '{desc}' but client at '{expected_desc}'"
       return payload
@@ -39,16 +38,14 @@ def play_bot(bot):
 
       if turn == 'theirs':
         # get the opponent's move
-        # TODO: everywhere, the format for moves should be changed from
-        #       (draw_location, discard_choice_or_end) to
-        #       (draw_location, discard_choice, do_end)
-        draw_location, discard_choice_or_end = read('opponent_turn').split(';')
+        draw_location, discard_choice, do_end = read('opponent_turn').split(';')
+        discard_choice = Card(discard_choice)
+        do_end = { 'True': True, 'False': False }[do_end]
 
-        if discard_choice_or_end == 'end':
+        if do_end:
           break
 
-        discard_choice = Card(discard_choice_or_end)
-        move = (draw_location, discard_choice)
+        move = (draw_location, discard_choice, do_end)
 
         next(bot)
         bot.send(move)
@@ -119,14 +116,12 @@ def make_bot(choose_draw, choose_discard, should_end):
   # Cards that are definitely in the other hand
   other_hand = set()
 
-  def event__opponent_turn(draw_location, drawn_card, discard_choice_or_end):
+  def event__opponent_turn(draw_location, drawn_card, discard_choice, do_end):
     """ Opponent's turn passed. `drawn_card` is a card if known, else None. """
-    history.append((draw_location, discard_choice_or_end))
-    if discard_choice_or_end != 'end':
-      discard_choice = discard_choice_or_end
-      discard.append(discard_choice)
-      seen.add(discard_choice)
-      unseen.discard(discard_choice)
+    history.append((draw_location, discard_choice, do_end))
+    discard.append(discard_choice)
+    seen.add(discard_choice)
+    unseen.discard(discard_choice)
     if drawn_card is not None:
       other_hand.add(drawn_card)
 
@@ -145,9 +140,9 @@ def make_bot(choose_draw, choose_discard, should_end):
     """ Whether or not we're ending the game. """
     pass
 
-  def event__turn(draw_location, drawn_location, discard_choice_or_end):
+  def event__turn(draw_location, drawn_location, discard_choice, do_end):
     """ Turn passed. Isomorphic to putting code in drew, discarded, and ending. """
-    history.append((draw_location, discard_choice_or_end))
+    history.append((draw_location, discard_choice, do_end))
 
   # These values are split into two groups
   # The first groups is the `hand` and `discard` since it encodes
@@ -176,11 +171,18 @@ def make_bot(choose_draw, choose_discard, should_end):
   while True:
 
     if active_player == 'them':
-      turn = draw_location, discard_choice_or_end = yield
+      turn = draw_location, discard_choice, do_end = yield
       yield
 
-      drawn_card = discard[-1] if draw_location == 'discard' else None
-      event__opponent_turn(draw_location, drawn_card, discard_choice_or_end)
+      if draw_location == 'discard':
+        drawn_card = discard[-1]
+      else:
+        drawn_card = None
+
+      event__opponent_turn(draw_location, drawn_card, discard_choice, do_end)
+
+      if do_end:
+        break
 
     elif active_player == 'us':
       if len(discard) == 0:
@@ -199,8 +201,7 @@ def make_bot(choose_draw, choose_discard, should_end):
       event__discarded(discard_choice)
       event__ending(do_end)
 
-      discard_choice_or_end = 'end' if do_end else discard_choice
-      event__turn(draw_location, drawn_card, discard_choice_or_end)
+      event__turn(draw_location, drawn_card, discard_choice, do_end)
 
     else:
       assert False, f"Unknown active player {repr(active_player)}"

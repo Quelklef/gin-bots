@@ -80,4 +80,5 @@ class Channel:
     self._log("Waiting")
     message = self.fifo.read(self.msg_size).strip()
     self._log(f"Received '{message}'")
+    assert message != '', "Received empty message, meaning the other end of the channel crashed"
     return message
