@@ -8,7 +8,8 @@ logger.setLevel(logging.INFO)
 
 # draw_choice is one of 'discard', 'deck'
 # discard_choice is a Card
-# history is [ (draw_choice, discard_choice) ]
+# history is [ (draw_choice, discard_choice, do_end), ... ]
+# derivables is { 'discard': discard, 'their_hand': their_hand }
 
 def decompose_history(history):
     """ decomposes the history into opponents hand, discard, and remaining deck """
@@ -16,7 +17,7 @@ def decompose_history(history):
     deck = cards.all_cards
     their_hand = set()
     discard = []
-    for draw_choice, discard_choice in history:
+    for draw_choice, discard_choice, do_end in history:
         if draw_choice is 'discard' and is_their_turn:
             their_hand |= {discard.pop()}
 
@@ -28,9 +29,10 @@ def decompose_history(history):
 
     return their_hand, discard, deck
 
-def choose_draw(hand, history):
+def choose_draw(hand, history, derivables):
     assert(type(hand) is set)
     assert(type(history) is list)
+    assert(type(derivables) is dict)
 
     their_hand, discard, deck = decompose_history(history)
 
@@ -54,7 +56,7 @@ def singles(cards):
                     if c is not card])
     return filter(doesnt_have_pair, cards)
 
-def choose_discard(hand, history):
+def choose_discard(hand, history, derivables):
     their_hand, discard, deck = decompose_history(history)
     _, deadwood = gin.arrange_hand(hand)
     deaderwood = list(singles(deadwood))
@@ -69,7 +71,7 @@ def choose_discard(hand, history):
     logger.info(f'discarding {card_to_discard}')
     return card_to_discard
 
-def should_end(hand, history):
+def should_end(hand, history, derivables):
     melds, deadwood = gin.arrange_hand(hand)
     return len(deadwood) is 0
 
