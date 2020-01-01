@@ -36,8 +36,8 @@ class GinBot:
       mode='r',
     )
 
-    self.channel_in.make()
-    self.channel_out.make()
+    self.channel_in.make_fifo()
+    self.channel_out.make_fifo()
 
     subprocess.Popen(
       ['sh', self.exec_loc.name],
@@ -45,35 +45,21 @@ class GinBot:
       stdout=sys.stdout,
     )
 
-    self.channel_out.open()
     self.channel_in.open()
+    self.channel_out.open()
 
   def __exit__(self, exc_type, exc_value, traceback):
     self.channel_in.close()
     self.channel_out.close()
+
+    self.channel_in.remove_fifo()
+    self.channel_out.remove_fifo()
 
     if exc_value is not None:
       raise exc_value
 
   def send_string(self, message: str):
     self.channel_out.send(message)
-
-  def recv(self):
-    message_string = self.channel_in.recv()
-    desc, payload = message_string.split(':')
-
-    if desc == 'draw_from':
-      assert payload in ['deck', 'discard']
-      return payload
-
-    elif desc == 'discard':
-      discard_choice, do_end = payload.split(';')
-      discard_choice = Card(discard_choice)
-      do_end = { 'True': True, 'False': False }[do_end]
-      return (discard_choice, do_end)
-
-    else:
-      assert False, f"Unrecognized message description {desc}"
 
   def send(self, desc, *args):
     message_string = None
@@ -99,6 +85,23 @@ class GinBot:
       assert False, f"Unrecognized message description {desc}"
 
     self.send_string(message_string)
+
+  def recv(self):
+    message_string = self.channel_in.recv()
+    desc, payload = message_string.split(':')
+
+    if desc == 'draw_from':
+      assert payload in ['deck', 'discard']
+      return payload
+
+    elif desc == 'discard':
+      discard_choice, do_end = payload.split(';')
+      discard_choice = Card(discard_choice)
+      do_end = { 'True': True, 'False': False }[do_end]
+      return (discard_choice, do_end)
+
+    else:
+      assert False, f"Unrecognized message description {desc}"
 
   def send_and_recv(self, *args, **kwargs):
     self.send(*args, **kwargs)

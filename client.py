@@ -59,8 +59,8 @@ def play_bot(bot):
   proper values at the right times :-).
   Just use the make_bot function to make it... """
 
-  with Channel('server -> client', 'to_client.fifo', 'r') as channel_in, \
-       Channel('client -> server', 'to_server.fifo', 'w') as channel_out:
+  with Channel('client -> server', 'to_server.fifo', 'w') as channel_out, \
+       Channel('server -> client', 'to_client.fifo', 'r') as channel_in:
 
     def read(expected_desc):
       message = channel_in.recv()

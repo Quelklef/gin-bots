@@ -41,7 +41,7 @@ class Channel:
   def _log(self, msg):
     logger.info(f"Channel {repr(self.name)}: {msg}")
 
-  def make(self):
+  def make_fifo(self):
     self._log("Making fifo")
 
     if os.path.exists(self.location):
@@ -49,6 +49,11 @@ class Channel:
       os.remove(self.location)
 
     os.mkfifo(self.location)
+
+  def remove_fifo(self):
+    self._log("Destroying fifo")
+    assert os.path.exists(self.location)
+    os.remove(self.location)
 
   def open(self):
     self._log("Opening")
