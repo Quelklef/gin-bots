@@ -172,9 +172,9 @@ parser.add_argument('-n', '--num_hands', type=int, default=15, help='the number 
 if __name__ == '__main__':
   args = parser.parse_args()
 
-  if len(args.bot_names) is 0:
+  if len(args.bot_names) == 0:
     bot_names = os.listdir('bots/')
-  elif len(args.bot_names) is 1:
+  elif len(args.bot_names) == 1:
     print("need to specify two or more bots!")
     sys.exit(1)
   else:
