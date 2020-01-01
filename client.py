@@ -115,7 +115,7 @@ def make_bot(choose_draw, choose_discard, should_end):
 
     if deck_size == 0:
       # Reshuffle happens
-      deck_size = 0
+      deck_size = len(discard)
       discard.clear()
 
   def event__opponent_turn(draw_location, drawn_card, discard_choice, do_end):
