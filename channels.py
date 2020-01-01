@@ -25,10 +25,6 @@ sys.excepthook = exception_handler
 # The server sends messages then waits for a response
 # The server is responsible for starting the client
 
-# TODO: processes need to fail gracefully when a process that they rely on fails.
-#       currently, if a client or server fails, the other will too, but it will do
-#       so by reading '' as a message and that will cause an error.
-
 class Channel:
   def __init__(self, name, location, mode, *, msg_size=150):
     self.name = name
