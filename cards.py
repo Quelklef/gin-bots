@@ -45,7 +45,7 @@ class Card:
   def _tuple(self):
     return (self.suit, self.rank)
 
-  def __eq__(self, other): return self._tuple == other._tuple
+  def __eq__(self, other): return isinstance(other, Card) and self._tuple == other._tuple
   def __ne__(self, other): return self._tuple != other._tuple
   def __lt__(self, other): return self._tuple <  other._tuple
   def __le__(self, other): return self._tuple <= other._tuple
