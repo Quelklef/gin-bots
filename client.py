@@ -38,15 +38,15 @@ def play_bot(bot):
 
       if turn == 'theirs':
         # get the opponent's move
-        draw_location, discard_choice, do_end = read('opponent_turn').split(';')
+        draw_location, discard_choice, do_end, did_reset = read('opponent_turn').split(';')
         discard_choice = Card(discard_choice)
         do_end = { 'True': True, 'False': False }[do_end]
+        did_reset = { 'True': True, 'False': False }[did_reset]
 
         if do_end:
           break
 
-        move = (draw_location, discard_choice, do_end)
-
+        move = (draw_location, discard_choice, do_end, did_reset)
         next(bot)
         bot.send(move)
 
@@ -81,8 +81,6 @@ def make_bot(choose_draw, choose_discard, should_end):
     `derivables`: A bunch of information that is derivable from hand and history
     but done in this function for convenience and efficiency. Contains the following keys:
       "discard"   : the discard pile, ordered chronologically
-      "seen"      : cards that have been seen in the game so far
-      "unseen"    : cards that have not been seen in the game so far
       "other_hand": cards that are definitely in the other player's hand
 
   and each should return:
@@ -107,34 +105,26 @@ def make_bot(choose_draw, choose_discard, should_end):
   # Discard pile
   discard    = []
 
-  # Cards that we have seen
-  seen       = set()
-
-  # Cards that we have not seen
-  unseen     = set()
-
   # Cards that are definitely in the other hand
   other_hand = set()
 
-  def event__opponent_turn(draw_location, drawn_card, discard_choice, do_end):
+  def event__opponent_turn(draw_location, drawn_card, discard_choice, do_end, did_reset):
     """ Opponent's turn passed. `drawn_card` is a card if known, else None. """
-    history.append((draw_location, discard_choice, do_end))
+    history.append((draw_location, discard_choice, do_end, did_reset))
     discard.append(discard_choice)
-    seen.add(discard_choice)
-    unseen.discard(discard_choice)
     if drawn_card is not None:
       other_hand.add(drawn_card)
+    if did_reset:
+      discard.clear()
 
   def event__drew(draw_location, drawn_card):
     """ Drew a card. """
     hand.add(drawn_card)
-    seen.add(drawn_card)
 
   def event__discarded(discard_choice):
     """ Discarded a card. """
     hand.remove(discard_choice)
     discard.append(discard_choice)
-    seen.add(discard_choice)
 
   def event__ending(do_end):
     """ Whether or not we're ending the game. """
@@ -153,8 +143,6 @@ def make_bot(choose_draw, choose_discard, should_end):
 
   derivables = {
     "discard": discard,
-    "seen": seen,
-    "unseen": unseen,
     "other_hand": other_hand,
   }
 
@@ -171,7 +159,7 @@ def make_bot(choose_draw, choose_discard, should_end):
   while True:
 
     if active_player == 'them':
-      turn = draw_location, discard_choice, do_end = yield
+      turn = draw_location, discard_choice, do_end, did_reset = yield
       yield
 
       if draw_location == 'discard':
@@ -179,7 +167,7 @@ def make_bot(choose_draw, choose_discard, should_end):
       else:
         drawn_card = None
 
-      event__opponent_turn(draw_location, drawn_card, discard_choice, do_end)
+      event__opponent_turn(draw_location, drawn_card, discard_choice, do_end, did_reset)
 
       if do_end:
         break

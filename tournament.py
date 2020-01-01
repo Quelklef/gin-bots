@@ -73,8 +73,8 @@ class GinBot:
     elif desc == 'opponent_turn':
       # The opponent played; this was their turn
       opponent_turn, = args
-      draw_location, discard_choice, do_end = opponent_turn
-      message_string = f"opponent_turn:{draw_location};{discard_choice};{do_end}"
+      draw_location, discard_choice, do_end, did_reset = opponent_turn
+      message_string = f"opponent_turn:{draw_location};{discard_choice};{do_end};{did_reset}"
 
     elif desc == 'drawn':
       # This is the card that the agent drew

@@ -136,9 +136,21 @@ def play_hand(player1, player2):
   Now the turns begin. Each turn looks like the following:
 
     1. The player is sent the turn that their opponent took,
-       as a tuple (draw_location, discard_choice, discard_location)
-       where discard_location is either 'deck' or 'discard'
-       and discard_choice is a Card object.
+       as a tuple
+
+         (draw_location, discard_choice, do_end, did_reset)
+
+       where:
+
+         draw_location: is either 'deck' or 'discard' depending on where
+         they drew from
+
+         discard_choice: is the card they discarded, as a Card object
+
+         do_end: is True if they ended the game and False otherwise
+
+         did_reset: is True if their turn caused the deck to run out,
+         forcing the discard to be reshuffled into the deck
 
     2. The player is expected to send  where they would like
        to draw from, either 'deck' or 'discard'.
@@ -190,15 +202,16 @@ def play_hand(player1, player2):
       # If the other player's turn ended the game, end it now
       # We do this after sending the turn to the active player so that
       # the client is able to recognize that the game is over and terminate
-      draw_location, discard_choice, do_end = previous_turn
-      discard.append(discard_choice)
+      draw_location, discard_choice, do_end, did_reset = previous_turn
+
       if do_end:
         end_score = score_hand(hand1, hand2)
         return end_score
 
-    # deck running out is a tie
-    if len(deck) == 0:
-      return 0
+      if did_reset:
+        deck = discard
+        discard = []
+        random.shuffle(deck)
 
     # Get where the player wants to draw from
     draw_location = active_player.recv()
@@ -223,7 +236,10 @@ def play_hand(player1, player2):
     active_hand.remove(discard_choice)
     discard.append(discard_choice)
 
-    history.append((draw_location, discard_choice, do_end))
+    did_reset = len(deck) == 0
+
+    turn = (draw_location, discard_choice, do_end, did_reset)
+    history.append(turn)
 
     swap_players()
 
