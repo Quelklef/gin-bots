@@ -8,6 +8,7 @@ import statistics as stat
 
 from cards import Card
 from channels import Channel
+import channels
 import gin
 
 class GinBot:
@@ -116,7 +117,7 @@ def compete(bot1, bot2, num_hands=15):
 
   scores = []
 
-  is_infinite = num_hands is 0
+  is_infinite = num_hands == 0
   if is_infinite:
     range_it = it.count(0)
   else:
@@ -136,9 +137,9 @@ def compete(bot1, bot2, num_hands=15):
     winner_score = abs(result)
     print(f"{winner} wins for {winner_score} points")
 
-  if is_infinite:
-    mean, stdev = mean_and_stdev(scores)
-    print(f"[{bot1} vs {bot2}] cumulative statistics: mean = {mean:+.2f}, stdev = {stdev:.2f}\n")
+    if is_infinite:
+      mean, stdev = mean_and_stdev(scores)
+      print(f"[{bot1} vs {bot2}] cumulative statistics: mean = {mean:+.2f}, stdev = {stdev:.2f}\n")
 
   return scores
 
