@@ -108,16 +108,49 @@ def score_hand(our_hand, their_hand):
     return our_score
 
 def play_hand(player1, player2):
-  """ Pit two players against each other in a single hand of Gin.
+  """
+  Pit two players against each other in a single hand of Gin.
   Return an integer value V where:
     abs(V) is the value of the winning bot
     V > 0 only if bot 1 won
     V < 0 only if bot 2 won
 
-  Agents should be a (stateful) function that accepts
-  a GameState and returns their move as a GameMove object.
+  Player 1 plays first.
 
-  Agent 1 plays first. """
+  The players must be stateful generator which will participate in
+  two-way communication with this function. This function will
+  send each player data at the appropriate times, and the players
+  are sometimes expected to return a response (and sometimes not).
+  This function will send the players data via the .send() method,
+  they should respond, if appropriate, by yielding a value.
+
+  The communication looks like the following:
+
+    1. The player is sent a tuple (hand, starting) where
+       the `hand` value is the player's starting hand, as a
+       set of Card objects, and `starting` is a boolean
+       denoting whether the player is the first to play or not.
+
+  Now the turns begin. Each turn looks like the following:
+
+    1. The player is sent the turn that their opponent took,
+       as a tuple (discard_location, discard_choice)
+       where discard_location is either 'deck' or 'discard'
+       and discard_choice is a Card object.
+
+    2. The player is expected to send  where they would like
+       to draw from, either 'deck' or 'discard'.
+
+    3. The player is send the card they drew.
+
+    4. The player is expected to send a tuple (discard_choice, do_end)
+       where discard_choice is the card they would like to discard
+       and do_end notes if they would like to end the game.
+
+    5. If the game has not ended, this repeats for the next turn.
+
+  The starting turn begins at step 2 instead of step 1.
+  """
 
   deck = list(all_cards)
   random.shuffle(deck)
@@ -129,78 +162,58 @@ def play_hand(player1, player2):
   hand1 = { deck.pop() for _ in range(10) }
   hand2 = { deck.pop() for _ in range(10) }
 
-  current_player = player1
+  # Send players their starting hand and starting turn info
+  player1.send( (hand1, True) )
+  player2.send( (hand2, False) )
+
+  active_player = player1
+  active_hand = hand1
+
+  def swap_players():
+    nonlocal active_player, active_hand
+    if active_player == player1:
+      active_player = player2
+      active_hand = hand2
+    elif active_player == player2:
+      active_player = player1
+      active_hand = hand1
 
   while True:
-    result = do_turn(deck, history, discard, player1, hand1, player2, hand2, current_player)
 
-    if result is not None:
-      end_score = result
+    # Send the player the other player's turn
+    if len(history) > 0:
+      active_player.send(history[-1])
+
+    # Get where the player wants to draw from
+    draw_location = active_player.recv()
+
+    if draw_location not in ['deck', 'discard']:
+      raise ValueError(f"Draw location must be 'deck' or 'discard', not {repr(draw_location)}.")
+
+    if draw_location == 'deck':
+      drawn_card = deck.pop()
+    if draw_location == 'discard':
+      if len(discard) == 0:
+        raise ValueError("Cannot draw from an empty discard pile.")
+      drawn_card = discard.pop()
+
+    active_hand.add(drawn_card)
+
+    # TODO: this code should not be aware of the interchange format
+    discard_choice, do_end = active_player.send_and_recv(drawn_card).split(';')
+    discard_choice = Card(discard_choice)
+    do_end = { 'False': False, 'True': True }[do_end]
+
+    if discard_choice not in active_hand:
+      raise ValueError("Cannot discard a card that you don't have.")
+
+    active_hand.remove(discard_choice)
+
+    if do_end:
+      end_score = score_hand(hand1, hand2)
       return end_score
 
-    # switch players
-    current_player = {
-      player1: player2,
-      player2: player1,
-    }[current_player]
+    history.append( (draw_location, discard_choice) )
 
-def do_turn(deck, history, discard, player1, hand1, player2, hand2, current_player):
-  """ do a turn, returning the score or None if the game isn't done """
-  # We choose to make the deck running out be a tie
-  if len(deck) == 0:
-    return 0
+    swap_players()
 
-  current_player_hand = hand1 if current_player == player1 else hand2
-  other_player_hand   = hand2 if current_player == player1 else hand1
-  _, _, player_ending = player_turn(deck, history, discard, current_player, current_player_hand)
-
-  if player_ending:
-    score = score_hand(current_player_hand, other_player_hand)
-    score_sign = 1 if current_player_hand == hand1 else -1
-    return score_sign * score
-
-def player_turn(deck, history, discard, player, hand):
-  """ have the player take a turn; return whether or not the player ends the game """
-
-  draw_choice, _                = player_draw   (deck, history, discard, player, hand)
-  discard_choice, player_ending = player_discard(deck, history, discard, player, hand)
-
-  history.append((draw_choice, discard_choice))
-
-  return (draw_choice, discard_choice, player_ending)
-
-def player_draw(deck, history, discard, player, hand):
-  """ have the player draw a card """
-  draw_choice = player({*hand}, [*history])
-
-  if draw_choice == 'deck':
-    drawn_card = deck.pop()
-
-  elif draw_choice == 'discard':
-    if len(discard) == 0:
-      raise ValueError("Cannot draw from an empty discard!")
-    drawn_card = discard.pop()
-
-  else:
-    raise ValueError(f"Expected either 'deck' or 'discard', not {repr(draw_choice)}.")
-
-  hand.add(drawn_card)
-
-  return (draw_choice, drawn_card)
-
-def player_discard(deck, history, discard, player, hand):
-  """ have the player discard a card and optionally end the game """
-  discard_choice, do_end = player({*hand}, [*history])
-  discard_choice = Card(discard_choice)
-
-  if discard_choice not in hand:
-    raise ValueError(f"Cannot discard {discard_choice} since it's not in your hand.")
-
-  discard.append(discard_choice)
-  hand.remove(discard_choice)
-
-  if do_end:  # end the game
-    if points_leftover(hand) > MAX_POINTS_TO_GO_DOWN:
-      raise ValueError(f"Cannot end on more than {MAX_POINTS_TO_GO_DOWN} points.")
-
-  return (discard_choice, do_end)

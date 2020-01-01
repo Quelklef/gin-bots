@@ -3,6 +3,7 @@ from pathlib import Path
 import itertools as it
 import statistics as stat
 
+from cards import Card
 import communication
 import gin
 
@@ -14,47 +15,80 @@ class GinBot:
   def __str__(self):
     return self.name
 
-  def call_exec(self, *args):
-    return eval(communication.to_client(self.exec_loc, args))
+  def __enter__(self):
+    self.fifo_in, self.fifo_out = communication.open_comms(self.exec_loc)
 
-  def __call__(self, hand, history):
-    result = self.call_exec(
-      ','.join(map(str, hand)),
-      ','.join(f"{draw_choice};{discard_choice}" for draw_choice, discard_choice in history),
-    )
-    return result
+  def __exit__(self, exc_type, exc_value, traceback):
+    communication.close_comms(self.fifo_in, self.fifo_out)
+    raise exc_value
+
+  def send_msg(self, message: str):
+    assert isinstance(message, str)
+    return communication.send_to_client(self.fifo_in, self.fifo_out, message)
+
+  def recv(self):
+    return communication.receive_from_client(self.fifo_in, self.fifo_out)
+
+  def send(self, message):
+    # This method is questionable (lol)
+
+    message_string = None
+
+    if type(message) is tuple:
+
+      if type(message[1]) is bool:
+        hand, is_starting = message
+        hand_string = ','.join(map(str, hand))
+        message_string = f"{hand_string};{is_starting}"
+
+      else:
+        draw_location, discard_choice = message
+        message_string = f"{draw_location};{discard_choice}"
+
+    elif type(message) is Card:
+      message_string = str(message)
+
+    assert isinstance(message_string, str)
+
+    self.send_msg(message_string)
+
+  def send_and_recv(self, message):
+    self.send(message)
+    return self.recv()
 
 def compete(bot1, bot2, num_hands=15):
   """ pit two bots against each other """
-  infinite = num_hands is 0
 
-  scores = []
+  with bot1, bot2:
 
-  print(f"\n#= {bot1} vs {bot2} =#")
+    print(f"\n#= {bot1} vs {bot2} =#")
 
-  if infinite:
-    range_it = it.count(0)
-  else:
-    range_it = range(num_hands)
+    scores = []
 
-  for i in range_it:
-    print(f"Hand #{i + 1}/{num_hands}... ", end='', flush=True)
-
-    result = gin.play_hand(bot1, bot2)
-    scores.append(result)
-
-    if result == 0:
-      print("tie")
+    is_infinite = num_hands is 0
+    if is_infinite:
+      range_it = it.count(0)
     else:
-      winner = bot1 if result > 0 else bot2
-      winner_score = abs(result)
-      print(f"{winner} wins for {winner_score} points")
+      range_it = range(num_hands)
 
-    if infinite:
-      mean, stdev = mean_and_stdev(scores)
-      print(f"cumulative statistics: mean = {mean:+.2f}, stdev = {stdev:.2f}")
+    for i in range_it:
+      print(f"Hand #{i + 1}/{num_hands}... ", end='', flush=True)
 
-  return scores
+      result = gin.play_hand(bot1, bot2)
+      scores.append(result)
+
+      if result == 0:
+        print("tie")
+      else:
+        winner = bot1 if result > 0 else bot2
+        winner_score = abs(result)
+        print(f"{winner} wins for {winner_score} points")
+
+      if infinite:
+        mean, stdev = mean_and_stdev(scores)
+        print(f"cumulative statistics: mean = {mean:+.2f}, stdev = {stdev:.2f}")
+
+    return scores
 
 def do_tournament(bots, num_hands=15):
   """ for a list of bots, pit each bot against every other """

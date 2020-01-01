@@ -92,7 +92,7 @@ def end_game(bot_hand):
 def play_bots_turn(deck, history, discard, bot, bot_hand):
 
   discard_copy = [*discard]
-  draw_choice, discard_choice, bot_ending = gin.player_turn(deck, history, discard, bot, bot_hand)
+  draw_choice, discard_choice, bot_ending = player_turn(deck, history, discard, bot, bot_hand)
 
   if draw_choice == 'discard':
     gained_card = discard_copy[-1]
@@ -149,3 +149,71 @@ if __name__ == '__main__':
   sys.path.append('bots/simple')
   from simple_gin import simple_bot
   play(simple_bot, bot_plays_first=True)
+
+
+
+# == # == #
+
+# The following code is bad and slated for removal but is needed for this module to run right now
+
+def do_turn(deck, history, discard, player1, hand1, player2, hand2, current_player):
+  """ do a turn, returning the score or None if the game isn't done """
+  # We choose to make the deck running out be a tie
+  if len(deck) == 0:
+    return 0
+
+  current_player_hand = hand1 if current_player == player1 else hand2
+  other_player_hand   = hand2 if current_player == player1 else hand1
+  _, _, player_ending = player_turn(deck, history, discard, current_player, current_player_hand)
+
+  if player_ending:
+    score = score_hand(current_player_hand, other_player_hand)
+    score_sign = 1 if current_player_hand == hand1 else -1
+    return score_sign * score
+
+def player_turn(deck, history, discard, player, hand):
+  """ have the player take a turn; return whether or not the player ends the game """
+
+  draw_choice, _                = player_draw   (deck, history, discard, player, hand)
+  discard_choice, player_ending = player_discard(deck, history, discard, player, hand)
+
+  history.append((draw_choice, discard_choice))
+
+  return (draw_choice, discard_choice, player_ending)
+
+def player_draw(deck, history, discard, player, hand):
+  """ have the player draw a card """
+  draw_choice = player({*hand}, [*history])
+
+  if draw_choice == 'deck':
+    drawn_card = deck.pop()
+
+  elif draw_choice == 'discard':
+    if len(discard) == 0:
+      raise ValueError("Cannot draw from an empty discard!")
+    drawn_card = discard.pop()
+
+  else:
+    raise ValueError(f"Expected either 'deck' or 'discard', not {repr(draw_choice)}.")
+
+  hand.add(drawn_card)
+
+  return (draw_choice, drawn_card)
+
+def player_discard(deck, history, discard, player, hand):
+  """ have the player discard a card and optionally end the game """
+  discard_choice, do_end = player({*hand}, [*history])
+  discard_choice = Card(discard_choice)
+
+  if discard_choice not in hand:
+    raise ValueError(f"Cannot discard {discard_choice} since it's not in your hand.")
+
+  discard.append(discard_choice)
+  hand.remove(discard_choice)
+
+  if do_end:  # end the game
+    if points_leftover(hand) > MAX_POINTS_TO_GO_DOWN:
+      raise ValueError(f"Cannot end on more than {MAX_POINTS_TO_GO_DOWN} points.")
+
+  return (discard_choice, do_end)
+

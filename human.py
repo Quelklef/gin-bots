@@ -1,5 +1,8 @@
 """ a bot that relays to the human at the computer """
 
+# TODO: instead of using this file, make a 'human' bot
+# by writing a bot in bots/human that relays to a human
+
 from sty import fg, bg, ef, rs
 
 import client
