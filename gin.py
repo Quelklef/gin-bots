@@ -79,12 +79,15 @@ def score_hand(our_hand, their_hand):
 
   # First arrange our hand as best as possible
   our_melds, our_deadwood = arrange_hand(our_hand)
+  is_gin = len(our_deadwood) == 0
 
   # Now arrange the their hand
   their_melds, their_deadwood = arrange_hand(their_hand)
 
-  # Play their deadwood on our melds
-  their_deadwood = frozenset(it.filterfalse(extends_any_meld(our_melds), their_deadwood))
+  # As long as we didn't Gin,
+  # They can play their deadwood on our melds
+  if not is_gin:
+    their_deadwood = frozenset(it.filterfalse(extends_any_meld(our_melds), their_deadwood))
 
   # Calculate number of points in each hand
   our_points = sum_cards_value(our_deadwood)
@@ -103,7 +106,6 @@ def score_hand(our_hand, their_hand):
     # Calculate our score
     our_score = their_points - our_points
     # Check if gin or not
-    is_gin = len(our_deadwood) == 0
     if is_gin: our_score += GIN_BONUS
     return our_score
 
