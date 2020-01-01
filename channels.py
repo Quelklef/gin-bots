@@ -30,7 +30,7 @@ sys.excepthook = exception_handler
 #       so by reading '' as a message and that will cause an error.
 
 class Channel:
-  def __init__(self, name, location, mode, *, msg_size=50):
+  def __init__(self, name, location, mode, *, msg_size=150):
     self.name = name
     self.location = location
     self.mode = mode
@@ -72,6 +72,7 @@ class Channel:
 
   def send(self, message: str):
     assert isinstance(message, str)
+    assert len(message) <= self.msg_size, "Message too long"
     self._log(f"Delivering '{message}'")
     self.fifo.write(message.ljust(self.msg_size))
     self.fifo.flush()

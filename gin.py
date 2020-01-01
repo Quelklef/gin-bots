@@ -138,7 +138,7 @@ def play_hand(player1, player2):
     1. The player is sent the turn that their opponent took,
        as a tuple
 
-         (draw_location, discard_choice, do_end, did_reset)
+         (draw_location, discard_choice, do_end, do_reshuffle)
 
        where:
 
@@ -149,7 +149,7 @@ def play_hand(player1, player2):
 
          do_end: is True if they ended the game and False otherwise
 
-         did_reset: is True if their turn caused the deck to run out,
+         do_reshuffle: is True if their turn caused the deck to run out,
          forcing the discard to be reshuffled into the deck
 
     2. The player is expected to send  where they would like
@@ -202,13 +202,13 @@ def play_hand(player1, player2):
       # If the other player's turn ended the game, end it now
       # We do this after sending the turn to the active player so that
       # the client is able to recognize that the game is over and terminate
-      draw_location, discard_choice, do_end, did_reset = previous_turn
+      draw_location, discard_choice, do_end, do_reshuffle = previous_turn
 
       if do_end:
         end_score = score_hand(hand1, hand2)
         return end_score
 
-      if did_reset:
+      if do_reshuffle:
         deck = discard
         discard = []
         random.shuffle(deck)
@@ -236,9 +236,9 @@ def play_hand(player1, player2):
     active_hand.remove(discard_choice)
     discard.append(discard_choice)
 
-    did_reset = len(deck) == 0
+    do_reshuffle = len(deck) == 0
 
-    turn = (draw_location, discard_choice, do_end, did_reset)
+    turn = (draw_location, discard_choice, do_end, do_reshuffle)
     history.append(turn)
 
     swap_players()

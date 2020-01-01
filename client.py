@@ -24,11 +24,9 @@ def play_bot(bot):
       message = f"{desc}:{payload}"
       channel_out.send(message)
 
-    starting_hand, am_starting = read('starting').split(';')
+    starting_hand, who_starts = read('starting').split(';')
     starting_hand = set(map(Card, starting_hand.split(',')))
-
-    # Who starts? either 'ours' or 'opponents'
-    am_starting = { 'True': True, 'False': False }[am_starting]
+    am_starting = { 'you start': True, 'opponent starts': False }[who_starts]
     turn = 'ours' if am_starting else 'theirs'
 
     next(bot)
@@ -38,15 +36,15 @@ def play_bot(bot):
 
       if turn == 'theirs':
         # get the opponent's move
-        draw_location, discard_choice, do_end, did_reset = read('opponent_turn').split(';')
+        draw_location, discard_choice, end_str, reshuffle_str = read('opponent_turn').split(';')
         discard_choice = Card(discard_choice)
-        do_end = { 'True': True, 'False': False }[do_end]
-        did_reset = { 'True': True, 'False': False }[did_reset]
+        do_end = { 'end': True, 'continue': False }[end_str]
+        do_reshuffle = { 'reshuffle': True, 'continue': False }[reshuffle_str]
 
         if do_end:
           break
 
-        move = (draw_location, discard_choice, do_end, did_reset)
+        move = (draw_location, discard_choice, do_end, do_reshuffle)
         next(bot)
         bot.send(move)
 
@@ -108,13 +106,13 @@ def make_bot(choose_draw, choose_discard, should_end):
   # Cards that are definitely in the other hand
   other_hand = set()
 
-  def event__opponent_turn(draw_location, drawn_card, discard_choice, do_end, did_reset):
+  def event__opponent_turn(draw_location, drawn_card, discard_choice, do_end, do_reshuffle):
     """ Opponent's turn passed. `drawn_card` is a card if known, else None. """
-    history.append((draw_location, discard_choice, do_end, did_reset))
+    history.append((draw_location, discard_choice, do_end, do_reshuffle))
     discard.append(discard_choice)
     if drawn_card is not None:
       other_hand.add(drawn_card)
-    if did_reset:
+    if do_reshuffle:
       discard.clear()
 
   def event__drew(draw_location, drawn_card):
@@ -159,7 +157,7 @@ def make_bot(choose_draw, choose_discard, should_end):
   while True:
 
     if active_player == 'them':
-      turn = draw_location, discard_choice, do_end, did_reset = yield
+      turn = draw_location, discard_choice, do_end, do_reshuffle = yield
       yield
 
       if draw_location == 'discard':
@@ -167,7 +165,7 @@ def make_bot(choose_draw, choose_discard, should_end):
       else:
         drawn_card = None
 
-      event__opponent_turn(draw_location, drawn_card, discard_choice, do_end, did_reset)
+      event__opponent_turn(draw_location, drawn_card, discard_choice, do_end, do_reshuffle)
 
       if do_end:
         break

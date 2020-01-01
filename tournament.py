@@ -68,13 +68,16 @@ class GinBot:
       # Start of the game
       hand, is_starting = args
       hand_str = ','.join(map(str, hand))
-      message_string = f"starting:{hand_str};{is_starting}"
+      starting_str = { True: 'you start', False: 'opponent starts' }[is_starting]
+      message_string = f"starting:{hand_str};{starting_str}"
 
     elif desc == 'opponent_turn':
       # The opponent played; this was their turn
       opponent_turn, = args
-      draw_location, discard_choice, do_end, did_reset = opponent_turn
-      message_string = f"opponent_turn:{draw_location};{discard_choice};{do_end};{did_reset}"
+      draw_location, discard_choice, do_end, do_reshuffle = opponent_turn
+      end_str = { True: 'end', False: 'continue' }[do_end]
+      reshuffle_str = { True: 'reshuffle', False: 'continue' }[do_reshuffle]
+      message_string = f"opponent_turn:{draw_location};{discard_choice};{end_str};{reshuffle_str}"
 
     elif desc == 'drawn':
       # This is the card that the agent drew
@@ -126,18 +129,17 @@ def compete(bot1, bot2, num_hands=15):
     with bot1, bot2:
       result = gin.play_hand(bot1, bot2)
 
+    assert result != 0, "Something is wrong"
+
     scores.append(result)
 
-    if result == 0:
-      print("tie")
-    else:
-      winner = bot1 if result > 0 else bot2
-      winner_score = abs(result)
-      print(f"{winner} wins for {winner_score} points")
+    winner = bot1 if result > 0 else bot2
+    winner_score = abs(result)
+    print(f"{winner} wins for {winner_score} points")
 
-    if is_infinite:
-      mean, stdev = mean_and_stdev(scores)
-      print(f"[{bot1} vs {bot2}] cumulative statistics: mean = {mean:+.2f}, stdev = {stdev:.2f}\n")
+  if is_infinite:
+    mean, stdev = mean_and_stdev(scores)
+    print(f"[{bot1} vs {bot2}] cumulative statistics: mean = {mean:+.2f}, stdev = {stdev:.2f}\n")
 
   return scores
 
