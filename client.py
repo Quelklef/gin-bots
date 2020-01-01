@@ -94,17 +94,17 @@ def make_bot(choose_draw, choose_discard, should_end):
   """
 
   # Our hand
-  hand       = set()
+  hand = set()
 
   # Deck size
   # Need to keep track of in order to know when a reshuffle happens
-  deck_size =  52
+  deck_size = 52
 
   # History of moves
-  history    = []
+  history = []
 
   # Discard pile
-  discard    = []
+  discard = []
 
   # Cards that are definitely in the other hand
   other_hand = set()
