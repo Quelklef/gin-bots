@@ -7,7 +7,7 @@ from cards import Card, all_cards
 from util import powerset, pairwise, flatten, union
 
 
-UNDERCUT_BONUS = 20
+UNDERCUT_BONUS = 10
 GIN_BONUS = 20
 MAX_POINTS_TO_GO_DOWN = 7
 
@@ -94,7 +94,7 @@ def score_hand(our_hand, their_hand):
   their_points = sum_cards_value(their_deadwood)
 
   # Check if an undercut
-  if their_points < our_points:
+  if their_points <= our_points:
     # Other player undercuts us
     # Calculate the number of points they will get
     their_score = our_points - their_points + UNDERCUT_BONUS
