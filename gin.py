@@ -163,8 +163,8 @@ def play_hand(player1, player2):
   hand2 = { deck.pop() for _ in range(10) }
 
   # Send players their starting hand and starting turn info
-  player1.send( (hand1, True) )
-  player2.send( (hand2, False) )
+  player1.send('starting', hand1, True)
+  player2.send('starting', hand2, False)
 
   active_player = player1
   active_hand = hand1
@@ -183,7 +183,7 @@ def play_hand(player1, player2):
     # Send the player the other player's turn
     if len(history) > 0:
       previous_turn = history[-1]
-      active_player.send(previous_turn)
+      active_player.send('opponent_turn', previous_turn)
 
       # If the other player's turn ended the game, end it now
       # We do this after sending the turn to the active player so that
@@ -208,10 +208,7 @@ def play_hand(player1, player2):
 
     active_hand.add(drawn_card)
 
-    # TODO: this code should not be aware of the interchange format
-    discard_choice, do_end = active_player.send_and_recv(drawn_card).split(';')
-    discard_choice = Card(discard_choice)
-    do_end = { 'False': False, 'True': True }[do_end]
+    discard_choice, do_end = active_player.send_and_recv('drawn', drawn_card)
 
     if discard_choice not in active_hand:
       raise ValueError(f"Cannot discard {discard_choice} since it's not in your hand.")

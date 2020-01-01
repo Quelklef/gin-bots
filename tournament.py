@@ -12,6 +12,8 @@ class GinBot:
     self.name = name
     self.exec_loc = exec_loc
 
+    self.game_state = 'starting'
+
   def __str__(self):
     return self.name
 
@@ -23,38 +25,54 @@ class GinBot:
     if exc_value is not None:
       raise exc_value
 
-  def send_msg(self, message: str):
+  def send_string(self, message: str):
     assert isinstance(message, str)
     return communication.send_to_client(self.fifo_in, self.fifo_out, message)
 
   def recv(self):
-    return communication.receive_from_client(self.fifo_in, self.fifo_out)
+    message_string = communication.receive_from_client(self.fifo_in, self.fifo_out)
+    desc, payload = message_string.split(':')
 
-  def send(self, message):
-    # This method is questionable (lol)
+    if desc == 'draw_from':
+      assert payload in ['deck', 'discard']
+      return payload
 
+    elif desc == 'discard':
+      discard_choice, do_end = payload.split(';')
+      discard_choice = Card(discard_choice)
+      do_end = { 'True': True, 'False': False }[do_end]
+      return (discard_choice, do_end)
+
+    else:
+      assert False, f"Unrecognized message description {desc}"
+
+  def send(self, desc, *args):
     message_string = None
 
-    if type(message) is tuple:
+    if desc == 'starting':
+      # Start of the game
+      hand, is_starting = args
+      hand_str = ','.join(map(str, hand))
+      message_string = f"starting:{hand_str};{is_starting}"
 
-      if type(message[1]) is bool:
-        hand, is_starting = message
-        hand_string = ','.join(map(str, hand))
-        message_string = f"{hand_string};{is_starting}"
+    elif desc == 'opponent_turn':
+      # The opponent played; this was their turn
+      opponent_turn, = args
+      draw_location, discard_choice_or_end = opponent_turn
+      message_string = f"opponent_turn:{draw_location};{discard_choice_or_end}"
 
-      else:
-        draw_location, discard_choice = message
-        message_string = f"{draw_location};{discard_choice}"
+    elif desc == 'drawn':
+      # This is the card that the agent drew
+      drawn_card, = args
+      message_string = f"drawn:{drawn_card}"
 
-    elif type(message) is Card:
-      message_string = str(message)
+    else:
+      assert False, f"Unrecognized message description {desc}"
 
-    assert isinstance(message_string, str)
+    self.send_string(message_string)
 
-    self.send_msg(message_string)
-
-  def send_and_recv(self, message):
-    self.send(message)
+  def send_and_recv(self, *args, **kwargs):
+    self.send(*args, **kwargs)
     return self.recv()
 
 def compete(bot1, bot2, num_hands=15):
@@ -87,7 +105,7 @@ def compete(bot1, bot2, num_hands=15):
 
     if is_infinite:
       mean, stdev = mean_and_stdev(scores)
-      print(f"cumulative statistics: mean = {mean:+.2f}, stdev = {stdev:.2f}")
+      print(f"[{bot1} vs {bot2}] cumulative statistics: mean = {mean:+.2f}, stdev = {stdev:.2f}\n")
 
   return scores
 

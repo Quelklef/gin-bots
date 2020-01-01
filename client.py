@@ -86,20 +86,23 @@ def play_bot(bot):
     # All messages are padded to a standard size
     msg_size = 50
 
-    def read():
-      logger.info(f"CLIENT '{bot_name}' WAITING FOR MESSAGE")
+    def read(expected_desc):
+      logger.info(f"client '{bot_name}' waiting for message")
       message = fifo_in.read(msg_size).strip()
-      logger.info(f"CLIENT '{bot_name}' READ: {repr(message)}")
-      return message
+      assert message != '', "Server crashed; terminating client."
+      logger.info(f"client '{bot_name}' read: {repr(message)}")
+      desc, payload = message.split(':')
+      assert desc == expected_desc, f"Server and client have fallen out of sync. Server at '{desc}' but client at '{expected_desc}'"
+      return payload
 
-    def write(message):
-      assert isinstance(message, str)
+    def write(desc, payload):
+      message = f"{desc}:{payload}"
       assert len(message) <= msg_size
-      logger.info(f"CLIENT '{bot_name}' SENDING: {repr(message)}")
+      logger.info(f"client '{bot_name}' sending: {repr(message)}")
       fifo_out.write(message.ljust(msg_size))
       fifo_out.flush()
 
-    starting_hand, am_starting = read().split(';')
+    starting_hand, am_starting = read('starting').split(';')
     starting_hand = set(map(Card, starting_hand.split(',')))
 
     # Who starts? either 'ours' or 'opponents'
@@ -107,40 +110,32 @@ def play_bot(bot):
     turn = 'ours' if am_starting else 'theirs'
 
     next(bot)
-    logger.info(f"[top] passing down starting info: {starting_hand}, {am_starting}")
-    bot.send( (starting_hand, am_starting) )
-    logger.info(f"[top] starting info passed down")
+    bot.send((starting_hand, am_starting))
 
     while True:
 
       if turn == 'theirs':
-        logger.info("[top] their turn")
         # get the opponent's move
         # TODO: everywhere, the format for moves should be changed from
         #       (draw_location, discard_choice_or_end) to
         #       (draw_location, discard_choice, do_end)
-        draw_location, discard_choice_or_end = read().split(';')
+        draw_location, discard_choice_or_end = read('opponent_turn').split(';')
 
         if discard_choice_or_end == 'end':
           break
 
         discard_choice = Card(discard_choice_or_end)
         move = (draw_location, discard_choice)
-        logger.info(f"[top] passing down opponent move: {move}")
+
         next(bot)
         bot.send(move)
 
       elif turn == 'ours':
-        logger.info("[top] our turn")
-        logger.info("[top] requesting draw_location")
         draw_location = next(bot)
-        logger.info(f"[top] got draw_location: {draw_location}")
-        write(draw_location)
-        drawn_card = Card(read())
-        logger.info(f"[top] passing down drawn card: {drawn_card}")
+        write('draw_from', draw_location)
+        drawn_card = Card(read('drawn'))
         discard_choice, do_end = bot.send(drawn_card)
-        logger.info(f"[top] received discard_choice, do_end: {discard_choice}, {do_end}")
-        write(f"{discard_choice};{do_end}")
+        write('discard', f"{discard_choice};{do_end}")
 
         if do_end:
           break
@@ -189,26 +184,17 @@ def make_bot(choose_draw, choose_discard, should_end):
   # TODO: keep track of derivable values
 
   # Who starts? either 'ours' or 'theirs'
-  logger.info("[bottom] waiting for starting info")
   starting_hand, am_starting = yield
-  logger.info(f"[bottom] starting info received: {starting_hand}, {am_starting}")
-  logger.info("[bottom] responding with None")
-  yield  # Respond with None
-  logger.info("[bottom] response complete")
+  yield
 
   turn = 'ours' if am_starting else 'theirs'
   hand.update(starting_hand)
 
   while True:
-    logger.info(f"[bottom] turn: {turn}")
 
     if turn == 'theirs':
-      logger.info("[bottom] waiting for opponent move")
       move = yield
-      assert isinstance(move, tuple)
-      logger.info(f"[bottom] opponent move received: {move}")
-      logger.info("[bottom] responding with None")
-      yield None  # Respond with None
+      yield
       history.append(move)
 
     elif turn == 'ours':
@@ -218,14 +204,11 @@ def make_bot(choose_draw, choose_discard, should_end):
         draw_location = 'deck'
       else:
         draw_location = choose_draw({*hand}, [*history])
-      logger.info(f"[bottom] passing up draw_location: {draw_location}")
       drawn_card = yield draw_location
-      logger.info(f"[bottom] recieved drawn_card: {drawn_card}")
 
       discard_choice = choose_discard(hand, history)
       do_end = gin.can_end(hand) and should_end({*hand}, [*history])
 
-      logger.info(f"[bottom] passing up discard choice, do_end: {discard_choice}, {do_end}")
       yield (discard_choice, do_end)
 
       hand.remove(discard_choice)
