@@ -4,12 +4,13 @@ from pathlib import Path
 import subprocess
 
 import logging
+import logging.handlers
 import traceback as tb
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-handler = logging.FileHandler('log.log', mode='w')
+handler = logging.handlers.RotatingFileHandler('log.log', mode='w', maxBytes=1e5, backupCount=3)
 formatter = logging.Formatter("%(name)s [%(levelname)s]: %(message)s")
 handler.setFormatter(formatter)
 handler.setLevel(logging.INFO)
