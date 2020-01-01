@@ -26,11 +26,11 @@ sys.excepthook = exception_handler
 # The server is responsible for starting the client
 
 class Channel:
-  def __init__(self, name, location, mode, *, msg_size=150):
+  def __init__(self, name, location, mode, *, max_msg_size=150):
     self.name = name
     self.location = location
     self.mode = mode
-    self.msg_size = msg_size
+    self.max_msg_size = max_msg_size
 
     logger.info(f"__init__ for channel '{self.name}' at '{self.location}'.")
 
@@ -68,14 +68,14 @@ class Channel:
 
   def send(self, message: str):
     assert isinstance(message, str)
-    assert len(message) <= self.msg_size, "Message too long"
+    assert len(message) <= self.max_msg_size, "Message too long"
     self._log(f"Delivering '{message}'")
-    self.fifo.write(message.ljust(self.msg_size))
+    self.fifo.write(message.ljust(self.max_msg_size))
     self.fifo.flush()
 
   def recv(self):
     self._log("Waiting")
-    message = self.fifo.read(self.msg_size).strip()
+    message = self.fifo.read(self.max_msg_size).strip()
     self._log(f"Received '{message}'")
     assert message != '', "Received empty message, meaning the other end of the channel crashed"
     return message
