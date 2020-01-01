@@ -1,10 +1,13 @@
-import os, subprocess, argparse, sys
+import os
+import subprocess
+import argparse
+import sys
 from pathlib import Path
 import itertools as it
 import statistics as stat
 
 from cards import Card
-import communication
+from channels import Channel
 import gin
 
 class GinBot:
@@ -12,25 +15,51 @@ class GinBot:
     self.name = name
     self.exec_loc = exec_loc
 
-    self.game_state = 'starting'
-
   def __str__(self):
     return self.name
 
   def __enter__(self):
-    self.fifo_in, self.fifo_out = communication.open_comms(self.exec_loc)
+    channel_out_loc = self.exec_loc.parent.joinpath('to_client.fifo')
+    channel_in_loc = self.exec_loc.parent.joinpath('to_server.fifo')
+
+    client_name = self.exec_loc.stem
+
+    self.channel_out = Channel(
+      name=f'server -> {client_name}',
+      location=channel_out_loc,
+      mode='w',
+    )
+
+    self.channel_in = Channel(
+      name=f'{client_name} -> server',
+      location=channel_in_loc,
+      mode='r',
+    )
+
+    self.channel_in.make()
+    self.channel_out.make()
+
+    subprocess.Popen(
+      ['sh', self.exec_loc.name],
+      cwd=self.exec_loc.parent,
+      stdout=sys.stdout,
+    )
+
+    self.channel_out.open()
+    self.channel_in.open()
 
   def __exit__(self, exc_type, exc_value, traceback):
-    communication.close_comms(self.fifo_in, self.fifo_out)
+    self.channel_in.close()
+    self.channel_out.close()
+
     if exc_value is not None:
       raise exc_value
 
   def send_string(self, message: str):
-    assert isinstance(message, str)
-    return communication.send_to_client(self.fifo_in, self.fifo_out, message)
+    self.channel_out.send(message)
 
   def recv(self):
-    message_string = communication.receive_from_client(self.fifo_in, self.fifo_out)
+    message_string = self.channel_in.recv()
     desc, payload = message_string.split(':')
 
     if desc == 'draw_from':

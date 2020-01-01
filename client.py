@@ -1,26 +1,9 @@
 """ Helper module for gin bots that are written in Python """
 
-import logging
-import traceback as tb
-import sys
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-handler = logging.FileHandler('client.py.log', mode='w')
-formatter = logging.Formatter("%(name)s [%(levelname)s]: %(message)s")
-handler.setFormatter(formatter)
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
-
-# log exceptions
-def exception_handler(*args):
-  logger.exception(''.join(tb.format_exception(*args)))
-sys.excepthook = exception_handler
-
 from cards import Card
 import cards
 import gin
+from channels import Channel
 
 def calculate_discard(history):
   """ calculate the current discard pile from a history """
@@ -76,31 +59,19 @@ def play_bot(bot):
   proper values at the right times :-).
   Just use the make_bot function to make it... """
 
-  from pathlib import Path  # REMOVE
-  import os  # REMOVE
-  bot_name = Path(os.getcwd()).name  # REMOVE
-
-  with open('to_client.fifo', 'r') as fifo_in, \
-       open('to_server.fifo', 'w') as fifo_out:
-
-    # All messages are padded to a standard size
-    msg_size = 50
+  with Channel('server -> client', 'to_client.fifo', 'r') as channel_in, \
+       Channel('client -> server', 'to_server.fifo', 'w') as channel_out:
 
     def read(expected_desc):
-      logger.info(f"client '{bot_name}' waiting for message")
-      message = fifo_in.read(msg_size).strip()
+      message = channel_in.recv()
       assert message != '', "Server crashed; terminating client."
-      logger.info(f"client '{bot_name}' read: {repr(message)}")
       desc, payload = message.split(':')
       assert desc == expected_desc, f"Server and client have fallen out of sync. Server at '{desc}' but client at '{expected_desc}'"
       return payload
 
     def write(desc, payload):
       message = f"{desc}:{payload}"
-      assert len(message) <= msg_size
-      logger.info(f"client '{bot_name}' sending: {repr(message)}")
-      fifo_out.write(message.ljust(msg_size))
-      fifo_out.flush()
+      channel_out.send(message)
 
     starting_hand, am_starting = read('starting').split(';')
     starting_hand = set(map(Card, starting_hand.split(',')))
