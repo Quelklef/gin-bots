@@ -1,2 +1,3 @@
-comm.txt
-log.log
+**.log
+**.log.*
+venv/
