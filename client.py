@@ -1,6 +1,8 @@
 """ Helper module for gin bots that are written in Python """
 
 import logging
+import traceback as tb
+import sys
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -10,6 +12,11 @@ formatter = logging.Formatter("%(name)s [%(levelname)s]: %(message)s")
 handler.setFormatter(formatter)
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
+
+# log exceptions
+def exception_handler(*args):
+  logger.exception(''.join(tb.format_exception(*args)))
+sys.excepthook = exception_handler
 
 from cards import Card
 import cards
@@ -80,15 +87,15 @@ def play_bot(bot):
     msg_size = 50
 
     def read():
-      logger.info(f"CLIENT {bot_name} WAITING FOR MESSAGE")
+      logger.info(f"CLIENT '{bot_name}' WAITING FOR MESSAGE")
       message = fifo_in.read(msg_size).strip()
-      logger.info(f"CLIENT {bot_name} READ: {repr(message)}")
+      logger.info(f"CLIENT '{bot_name}' READ: {repr(message)}")
       return message
 
     def write(message):
       assert isinstance(message, str)
       assert len(message) <= msg_size
-      logger.info(f"CLIENT {bot_name} SENDING: {repr(message)}")
+      logger.info(f"CLIENT '{bot_name}' SENDING: {repr(message)}")
       fifo_out.write(message.ljust(msg_size))
       fifo_out.flush()
 
@@ -99,16 +106,15 @@ def play_bot(bot):
     am_starting = { 'True': True, 'False': False }[am_starting]
     turn = 'ours' if am_starting else 'theirs'
 
-    logger.info(f"[top] passing down starting info: {starting_hand}, {am_starting}")
     next(bot)
+    logger.info(f"[top] passing down starting info: {starting_hand}, {am_starting}")
     bot.send( (starting_hand, am_starting) )
+    logger.info(f"[top] starting info passed down")
 
     while True:
 
-      logger.info(f"[top] while: {turn}")
-
       if turn == 'theirs':
-        logger.info("[top] turn theirs")
+        logger.info("[top] their turn")
         # get the opponent's move
         # TODO: everywhere, the format for moves should be changed from
         #       (draw_location, discard_choice_or_end) to
@@ -121,10 +127,11 @@ def play_bot(bot):
         discard_choice = Card(discard_choice_or_end)
         move = (draw_location, discard_choice)
         logger.info(f"[top] passing down opponent move: {move}")
+        next(bot)
         bot.send(move)
 
       elif turn == 'ours':
-        logger.info("[top] turn ours")
+        logger.info("[top] our turn")
         logger.info("[top] requesting draw_location")
         draw_location = next(bot)
         logger.info(f"[top] got draw_location: {draw_location}")
@@ -182,18 +189,25 @@ def make_bot(choose_draw, choose_discard, should_end):
   # TODO: keep track of derivable values
 
   # Who starts? either 'ours' or 'theirs'
+  logger.info("[bottom] waiting for starting info")
   starting_hand, am_starting = yield
-  yield None  # Respond with None
-
-  logger.info(f"[bot] starting info received: {starting_hand}, {am_starting}")
+  logger.info(f"[bottom] starting info received: {starting_hand}, {am_starting}")
+  logger.info("[bottom] responding with None")
+  yield  # Respond with None
+  logger.info("[bottom] response complete")
 
   turn = 'ours' if am_starting else 'theirs'
   hand.update(starting_hand)
 
   while True:
+    logger.info(f"[bottom] turn: {turn}")
 
     if turn == 'theirs':
+      logger.info("[bottom] waiting for opponent move")
       move = yield
+      assert isinstance(move, tuple)
+      logger.info(f"[bottom] opponent move received: {move}")
+      logger.info("[bottom] responding with None")
       yield None  # Respond with None
       history.append(move)
 
@@ -204,16 +218,17 @@ def make_bot(choose_draw, choose_discard, should_end):
         draw_location = 'deck'
       else:
         draw_location = choose_draw({*hand}, [*history])
-      logger.info(f"[bot] passing up draw_location: {draw_location}")
+      logger.info(f"[bottom] passing up draw_location: {draw_location}")
       drawn_card = yield draw_location
-      logger.info(f"[bot] recieved drawn_card: {drawn_card}")
+      logger.info(f"[bottom] recieved drawn_card: {drawn_card}")
 
       discard_choice = choose_discard(hand, history)
       do_end = gin.can_end(hand) and should_end({*hand}, [*history])
 
-      logger.info(f"[bot] passing up discard choice, do_end: {discard_choice}, {do_end}")
+      logger.info(f"[bottom] passing up discard choice, do_end: {discard_choice}, {do_end}")
       yield (discard_choice, do_end)
 
+      hand.remove(discard_choice)
       move = (draw_location, discard_choice)
       history.append(move)
 

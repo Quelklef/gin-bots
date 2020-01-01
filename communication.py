@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 
 import logging
+import traceback as tb
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -13,6 +14,11 @@ formatter = logging.Formatter("%(name)s [%(levelname)s]: %(message)s")
 handler.setFormatter(formatter)
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
+
+# log exceptions
+def exception_handler(*args):
+  logger.exception(''.join(tb.format_exception(*args)))
+sys.excepthook = exception_handler
 
 # Communication between server and client emulates synchronocity
 # It's implemented with two channels, one client -> server and one server -> client

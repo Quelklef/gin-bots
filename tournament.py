@@ -20,7 +20,8 @@ class GinBot:
 
   def __exit__(self, exc_type, exc_value, traceback):
     communication.close_comms(self.fifo_in, self.fifo_out)
-    raise exc_value
+    if exc_value is not None:
+      raise exc_value
 
   def send_msg(self, message: str):
     assert isinstance(message, str)
@@ -59,36 +60,36 @@ class GinBot:
 def compete(bot1, bot2, num_hands=15):
   """ pit two bots against each other """
 
-  with bot1, bot2:
+  print(f"\n#= {bot1} vs {bot2} =#")
 
-    print(f"\n#= {bot1} vs {bot2} =#")
+  scores = []
 
-    scores = []
+  is_infinite = num_hands is 0
+  if is_infinite:
+    range_it = it.count(0)
+  else:
+    range_it = range(num_hands)
 
-    is_infinite = num_hands is 0
-    if is_infinite:
-      range_it = it.count(0)
-    else:
-      range_it = range(num_hands)
+  for i in range_it:
+    print(f"Hand #{i + 1}/{num_hands}... ", end='', flush=True)
 
-    for i in range_it:
-      print(f"Hand #{i + 1}/{num_hands}... ", end='', flush=True)
-
+    with bot1, bot2:
       result = gin.play_hand(bot1, bot2)
-      scores.append(result)
 
-      if result == 0:
-        print("tie")
-      else:
-        winner = bot1 if result > 0 else bot2
-        winner_score = abs(result)
-        print(f"{winner} wins for {winner_score} points")
+    scores.append(result)
 
-      if infinite:
-        mean, stdev = mean_and_stdev(scores)
-        print(f"cumulative statistics: mean = {mean:+.2f}, stdev = {stdev:.2f}")
+    if result == 0:
+      print("tie")
+    else:
+      winner = bot1 if result > 0 else bot2
+      winner_score = abs(result)
+      print(f"{winner} wins for {winner_score} points")
 
-    return scores
+    if is_infinite:
+      mean, stdev = mean_and_stdev(scores)
+      print(f"cumulative statistics: mean = {mean:+.2f}, stdev = {stdev:.2f}")
+
+  return scores
 
 def do_tournament(bots, num_hands=15):
   """ for a list of bots, pit each bot against every other """

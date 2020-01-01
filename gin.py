@@ -182,7 +182,16 @@ def play_hand(player1, player2):
 
     # Send the player the other player's turn
     if len(history) > 0:
-      active_player.send(history[-1])
+      previous_turn = history[-1]
+      active_player.send(previous_turn)
+
+      # If the other player's turn ended the game, end it now
+      # We do this after sending the turn to the active player so that
+      # the client is able to recognize that the game is over and terminate
+      draw_location, discard_choice_or_end = previous_turn
+      if discard_choice_or_end == 'end':
+        end_score = score_hand(hand1, hand2)
+        return end_score
 
     # Get where the player wants to draw from
     draw_location = active_player.recv()
@@ -205,15 +214,15 @@ def play_hand(player1, player2):
     do_end = { 'False': False, 'True': True }[do_end]
 
     if discard_choice not in active_hand:
-      raise ValueError("Cannot discard a card that you don't have.")
+      raise ValueError(f"Cannot discard {discard_choice} since it's not in your hand.")
 
     active_hand.remove(discard_choice)
+    discard.append(discard_choice)
 
     if do_end:
-      end_score = score_hand(hand1, hand2)
-      return end_score
-
-    history.append( (draw_location, discard_choice) )
+      history.append( (draw_location, 'end') )
+    else:
+      history.append( (draw_location, discard_choice) )
 
     swap_players()
 
