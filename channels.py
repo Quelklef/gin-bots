@@ -35,8 +35,8 @@ class Channel:
 
     logger.info(f"__init__ for channel '{self.name}' at '{self.location}'.")
 
-  def _log(self, msg):
-    logger.info(f"Channel {repr(self.name)}: {msg}")
+  def _log(self, msg, *, level=logging.INFO):
+    logger.log(level, f"Channel {repr(self.name)}: {msg}")
 
   def make_fifo(self):
     self._log("Making fifo")
@@ -85,7 +85,11 @@ class Channel:
     chunks = []
     while True:
       read = self.fifo.read(self.chunk_size + 2).strip()
-      assert read != '', "Empty read, meaning the other end of the channel crashed"
+
+      if read == '':
+        self._log("Empty read, meaning the other end of the channel crashed",
+                  level=logging.ERROR)
+        assert False, "Empty read"
 
       marker = read[0]
       completed = { '!': True, '+': False }[marker]
