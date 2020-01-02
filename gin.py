@@ -109,7 +109,7 @@ def score_hand(our_hand, their_hand):
     if is_gin: our_score += GIN_BONUS
     return our_score
 
-def play_hand(player1, player2):
+def play_hand(player1, player2, *, state_callback=lambda x: None):
   """
   Pit two players against each other in a single hand of Gin.
   Return an integer value V where:
@@ -117,14 +117,18 @@ def play_hand(player1, player2):
     V > 0 only if bot 1 won
     V < 0 only if bot 2 won
 
+  If state_callback is given, it will be called with the game
+  state (hand1, hand2, history, discard) before the game and then
+  after every turn. History /will/ contain the turn just taken.
+
   Player 1 plays first.
 
-  The players must be stateful generator which will participate in
+  The players must be objects which will participate in
   two-way communication with this function. This function will
   send each player data at the appropriate times, and the players
   are sometimes expected to return a response (and sometimes not).
-  This function will send the players data via the .send() method,
-  they should respond, if appropriate, by yielding a value.
+  This function will send the players data via the .send() method
+  and will ask for responses via a .recv() method.
 
   The communication looks like the following:
 
@@ -176,6 +180,8 @@ def play_hand(player1, player2):
   # Send players their starting hand and starting turn info
   player1.send('starting', hand1, True)
   player2.send('starting', hand2, False)
+
+  state_callback(hand1, hand2, history, discard)
 
   active_player = player1
   active_hand = hand1
@@ -237,5 +243,6 @@ def play_hand(player1, player2):
     turn = (draw_location, discard_choice, do_end)
     history.append(turn)
 
+    state_callback(hand1, hand2, history, discard)
     swap_players()
 

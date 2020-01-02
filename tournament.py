@@ -10,6 +10,7 @@ from cards import Card
 from channels import Channel
 import channels
 import gin
+import prettify
 
 class GinBot:
   def __init__(self, name, exec_loc):
@@ -110,6 +111,11 @@ class GinBot:
     self.send(*args, **kwargs)
     return self.recv()
 
+prettify_state = prettify.prettify_state
+def print_state(hand1, hand2, history, discard):
+  pretty = prettify_state(hand1, hand2, history, discard)
+  print(pretty, end='')
+
 def compete(bot1, bot2, num_hands=15):
   """ pit two bots against each other """
 
@@ -127,7 +133,7 @@ def compete(bot1, bot2, num_hands=15):
     print(f"Hand #{i + 1}/{num_hands}... ", end='', flush=True)
 
     with bot1, bot2:
-      result = gin.play_hand(bot1, bot2)
+      result = gin.play_hand(bot1, bot2, state_callback=print_state)
 
     assert result != 0, "Something is wrong"
 
@@ -169,10 +175,23 @@ def mean_and_stdev(games):
 
 parser = argparse.ArgumentParser(description='Run some gin bots!')
 parser.add_argument('bot_names', nargs='*')
-parser.add_argument('-n', '--num_hands', type=int, default=15, help='the number of hands of play per match, defaults to 15, 0 means infinite')
+parser.add_argument(
+  '-n', '--num_hands', type=int, default=15,
+  help='the number of hands of play per match, defaults to 15, 0 means infinite'
+)
+parser.add_argument(
+  '-s', '--style', type=str, default='none',
+  help='Choose the style, "tabletop" or "grid" or "none". Default: "none"'
+)
 
 if __name__ == '__main__':
   args = parser.parse_args()
+
+  prettify_state = {
+    'tabletop': prettify.prettify_state,
+    'grid': prettify.prettify_state_table,
+    'none': lambda *args, **kwargs: ''
+  }[args.style]
 
   if len(args.bot_names) == 0:
     bot_names = os.listdir('bots/')

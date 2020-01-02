@@ -102,21 +102,23 @@ def prettify_history(history):
   """ Turn a history into a pretty string """
   return "; ".join(map(prettify_move, history))
 
-def prettify_state(hand, history, derivables, *, drawn_card=None):
+def prettify_state(hand1, hand2, history, discard, *, drawn_card_1=None, drawn_card_2=None):
   """ Turn a game state into Art """
 
-  discard = derivables['discard']
-  other_hand = derivables['other_hand']
+  def pad_hand(hand):
+    return sorted(hand) + [None] * (10 - len(hand))
 
-  other_hand_padded = sorted(other_hand) + [None] * (10 - len(other_hand))
+  # pad hands
+  hand1 = pad_hand(hand1)
+  hand2 = pad_hand(hand2)
 
   return ''.join([
-    "\n\nOther player's hand:\n",
-    str(prettify_cards(other_hand_padded)),
+    "\n\Hand 1:\n",
+    str(prettify_cards(hand1, drawn_card=drawn_card_1)),
     "\n\nDiscard:\n",
     str(prettify_discard(discard)),
-    "\n\nYour hand:\n",
-    str(prettify_cards(sorted(hand), drawn_card=drawn_card)),
+    "\n\Hand 2:\n",
+    str(prettify_cards(hand2, drawn_card=drawn_card_2)),
     "\n\nHistory:\n",
     str(prettify_history(history)),
     "\n",
@@ -124,31 +126,54 @@ def prettify_state(hand, history, derivables, *, drawn_card=None):
 
 # == A different way of displaying state == #
 
-def prettify_state_table(hand, history, derivables, *, drawn_card=None):
+def split_discard(history):
+  """ Split a discard into the cards discarded by the first player, and those by the second """
+
+  deck_size = 52
+
+  discard1 = []
+  discard2 = []
+
+  discard = discard2
+
+  def swap_discards():
+    nonlocal discard
+    if discard is discard1:
+      discard = discard2
+    else:
+      discard = discard1
+
+  for turn in history:
+    draw_location, discard_choice, do_end = turn
+
+    if draw_location == 'discard':
+      discard.pop()
+    else:
+      deck_size -= 1
+
+    swap_discards()
+
+    discard.append(discard_choice)
+
+    # reshuffle
+    if deck_size == 0:
+      discard1 = []
+      discard2 = []
+
+  return (discard1, discard2)
+
+def prettify_state_table(hand1, hand2, history, discard,
+    *, drawn_card_1=None, drawn_card_2=None, player_1_char='1', player_2_char='2'):
   """ Return a game state into a pretty string of a table """
 
-  their_hand = derivables['other_hand']
-  discard = derivables['discard']
-  our_discard = derivables['our_discard']
-  their_discard = derivables['their_discard']
-
-  melds, deadwood = gin.arrange_hand(hand)
-  metadata = '\n'.join([
-  'new card: '        + str(drawn_card),
-  'discard pile: '    + ','.join(map(str, discard)),
-  'history: '         + '; '.join(map(lambda move: f"(+{move[0]} -{move[1]})", history)),
-  'melds: '           + ' & '.join(map(lambda meld: ','.join(map(str, meld)), melds)),
-  'deadwood: '        + ','.join(map(str, deadwood)),
-  'deadwood points: ' + str(gin.points_leftover(hand)),
-  ])
+  discard1, discard2 = split_discard(history)
 
   grid_style = sty.ef.dim
 
   template = f"""
 
-{metadata}
+blue: hand 1; green: hand 2; red: discarded; underline: recent
 
-blue: yours (underline: just drawn); red: theirs; green: discarded (underline: just discarded by them)
 {grid_style}
    ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷
    │ % │ % │ % │ % │ % │ % │ % │ % │ % │ % │ % │ % │ % │
@@ -171,19 +196,22 @@ blue: yours (underline: just drawn); red: theirs; green: discarded (underline: j
   ranks = map(style_rank, ['♠ ', '♥ ', '♦ ', '♣ '])
 
   def style_cell(card):
-    if card in hand:
-      string = sty.ef.bold + sty.fg.li_blue + 'Y' + sty.rs.all + grid_style
-      if card == drawn_card:
+    if card in hand1:
+      string = sty.ef.bold + sty.fg.li_yellow + player_1_char + sty.rs.all + grid_style
+      if card == drawn_card_1:
         string = sty.ef.underl + string
       return string
 
-    elif card in their_hand:
-      return sty.ef.bold + sty.fg.li_red + 'T' + sty.rs.all + grid_style
+    elif card in hand2:
+      string = sty.ef.bold + sty.fg.li_cyan + player_2_char + sty.rs.all + grid_style
+      if card == drawn_card_2:
+        string = sty.ef.underl + string
+      return string
 
     elif card in discard:
-      letter = 'Y' if card in our_discard else 'T'
-      string = sty.ef.bold + sty.fg.green + letter + sty.rs.all + grid_style
-      if card == discard[-1] and card in their_discard:
+      letter = player_1_char if card in discard1 else player_2_char
+      string = sty.ef.bold + sty.fg.blue + letter + sty.rs.all + grid_style
+      if card == discard[-1]:
         string = sty.ef.underl + string
       return string
 
