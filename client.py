@@ -121,12 +121,13 @@ def make_bot(choose_draw, choose_discard, should_end):
   def event__opponent_turn(draw_location, drawn_card, discard_choice, do_end):
     """ Opponent's turn passed. `drawn_card` is a card if known, else None. """
     history.append((draw_location, discard_choice, do_end))
-    discard.append(discard_choice)
 
     if draw_location == 'discard':
       discard.pop()
     else:
       deck_pop()
+
+    discard.append(discard_choice)
 
     if drawn_card is not None:
       other_hand.add(drawn_card)
