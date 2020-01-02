@@ -1,17 +1,21 @@
 """ A human player """
 
+import argparse
+
 import sys
 sys.path.append('../..')
 
-from prettify import prettify_state_table
+import prettify
 from cards import Card, parse_card_is_ok
 from util import input_until
 import client
 
+prettify_state = prettify.prettify_state_table
+
 hand_before_draw = None
 
 def choose_draw(hand, history, derivables):
-  print(prettify_state_table(hand, history, derivables))
+  print(prettify_state(hand, history, derivables))
 
   global hand_before_draw
   hand_before_draw = {*hand}
@@ -27,7 +31,7 @@ def choose_discard(hand, history, derivables):
   else:
     drawn_card = None
 
-  print(prettify_state_table(hand, history, derivables, drawn_card=drawn_card))
+  print(prettify_state(hand, history, derivables, drawn_card=drawn_card))
 
   discard_choice = Card(input_until(
     "Card to discard: ",
@@ -38,7 +42,7 @@ def choose_discard(hand, history, derivables):
   return discard_choice
 
 def should_end(hand, history, derivables):
-  print(prettify_state_table(hand, history, derivables))
+  print(prettify_state(hand, history, derivables))
 
   return 'y' == input_until(
     "End the game here? ['y'/'n']: ",
@@ -47,6 +51,19 @@ def should_end(hand, history, derivables):
 
 human_bot = client.make_bot(choose_draw, choose_discard, should_end)
 
+parser = argparse.ArgumentParser(description='Have a human play as a bot')
+parser.add_argument(
+  '-d', '--display', type=str, default='tabletop',
+  help='Choose the display, either "tabletop" or "grid"'
+)
+
 if __name__ == '__main__':
+
+  args = parser.parse_args()
+  prettify_state = {
+    'tabletop': prettify.prettify_state,
+    'grid': prettify.prettify_state_table,
+  }[args.display]
+
   client.play_bot(human_bot)
 

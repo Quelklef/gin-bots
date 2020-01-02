@@ -41,7 +41,7 @@ def card_to_art(card, drawn_card=None):
     return art
 
   else:
-    art = Art(
+    template = Art(
       lines=[
         "╭───────╮",
         "│ @ @ @ │",
@@ -56,9 +56,9 @@ def card_to_art(card, drawn_card=None):
     )
 
     if drawn_card is None or card != drawn_card:
-      art = art.replace('*', ' ')
+      template = template.replace('*', ' ')
 
-    return fill_template(art, card)
+    return fill_template(template, card)
 
 def card_to_art_but_just_a_lil(card):
   template = Art(
@@ -74,23 +74,23 @@ def card_to_art_but_just_a_lil(card):
     color=colors[card.suit],
   )
 
-  return fill_template(art, card)
+  return fill_template(template, card)
 
 def prettify_discard(discard):
   """ Turn a discard pile into Art """
   if not discard:
-    return Art(lines=[] * 3)
+    return Art(lines=[""] * 3)
 
   discard = [*discard]
   last = discard.pop()
-  return join_art( list(map(card_to_art_but_just_a_lil, discard)) + [card_to_art(last)], sep='' )
+  return Art('').join( [card_to_art_but_just_a_lil(card) for card in discard] + [card_to_art(last)] )
 
 def prettify_cards(cards, *, drawn_card=None):
   """ Turn a list of cards into Art """
   if len(cards) == 0:
     return Art.blank(width=1, height=7)
 
-  return '  '.join(card_to_art(card, drawn_card) for card in cards)
+  return Art('  ').join(card_to_art(card, drawn_card) for card in cards)
 
 def prettify_move(move):
   """ Turn a game move into a pretty string """
@@ -111,14 +111,15 @@ def prettify_state(hand, history, derivables, *, drawn_card=None):
   other_hand_padded = sorted(other_hand) + [None] * (10 - len(other_hand))
 
   return ''.join([
-    "\nOther player's hand:\n",
-    prettify_cards(other_hand_padded),
-    "\nDiscard:\n",
-    prettify_discard(discard),
-    "\nYour hand:\n",
-    prettify_cards(sorted(hand), drawn_card),
-    "\nHistory:\n",
-    prettify_history(history),
+    "\n\nOther player's hand:\n",
+    str(prettify_cards(other_hand_padded)),
+    "\n\nDiscard:\n",
+    str(prettify_discard(discard)),
+    "\n\nYour hand:\n",
+    str(prettify_cards(sorted(hand), drawn_card=drawn_card)),
+    "\n\nHistory:\n",
+    str(prettify_history(history)),
+    "\n",
   ])
 
 # == A different way of displaying state == #
@@ -131,15 +132,15 @@ def prettify_state_table(hand, history, derivables, *, drawn_card=None):
   our_discard = derivables['our_discard']
   their_discard = derivables['their_discard']
 
-  print()
-  print('new card:', str(drawn_card))
-  print('discard pile:', ','.join(map(str, discard)))
   melds, deadwood = gin.arrange_hand(hand)
-  print('history:', '; '.join(map(lambda move: f"(+{move[0]} -{move[1]})", history)))
-  print('melds:', ' & '.join(map(lambda meld: ','.join(map(str, meld)), melds)))
-  print('deadwood:', ','.join(map(str, deadwood)))
-  print('deadwood points:', gin.points_leftover(hand))
-  print()
+  metadata = ''.join([
+  'new card:'       , str(drawn_card),
+  'discard pile:'   , ','.join(map(str, discard)),
+  'history:'        , '; '.join(map(lambda move: f"(+{move[0]} -{move[1]})", history)),
+  'melds:'          , ' & '.join(map(lambda meld: ','.join(map(str, meld)), melds)),
+  'deadwood:'       , ','.join(map(str, deadwood)),
+  'deadwood points:', str(gin.points_leftover(hand)),
+  ])
 
   grid_style = sty.ef.dim
 
