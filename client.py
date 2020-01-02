@@ -127,11 +127,11 @@ def make_bot(choose_draw, choose_discard, should_end):
     else:
       deck_pop()
 
-    discard.append(discard_choice)
-    other_hand.discard(discard_choice)
-
     if drawn_card is not None:
       other_hand.add(drawn_card)
+
+    discard.append(discard_choice)
+    other_hand.discard(discard_choice)
 
   def event__drew(draw_location, drawn_card):
     """ Drew a card. """
