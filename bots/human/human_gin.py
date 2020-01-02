@@ -39,54 +39,68 @@ colors = {
 def prettier_rank(card):
   return 'X' if card.rank == 10 else card.pretty_rank
 
-def print_state(hand, new_card, history, discard):
-  print("\n\nHand:\n")
-  print(hand_to_art(hand, new_card))
-  print("\n\nDiscard:\n")
+def print_state(hand, new_card, history, derivables):
+  discard = derivables['discard']
+  other_hand = derivables['other_hand']
+
+  other_hand_display = sorted(other_hand) + [None] * (10 - len(other_hand))
+
+  print("\nOther player's hand:\n")
+  print(cards_to_art(other_hand_display))
+  print("\nDiscard:\n")
   print(discard_to_art(discard))
-  print("\n\nHistory:\n")
+  print("\nYour hand:\n")
+  print(cards_to_art(sorted(hand), new_card))
+  print("\nHistory:\n")
   print(history_to_art(history))
 
 def card_template_to_art(template, card):
   pretty = (template[1:-1]
     .replace('@', card.sigil)
     .replace('R', prettier_rank(card))
-    .replace('r', '╭')
-    .replace('\\', '╮')
-    .replace('L', '╰')
-    .replace('/', '╯')
-    .replace('|', '│')
-    .replace('-', '─')
     )
 
   return color_art(pretty, colors[card.suit])
 
 def card_to_art(card, new_card=None):
-  template = r"""
-r-------\
+  if card is None:
+    s = """
+╭───────╮
+| ╲   ╱ |
+|  ╲ ╱  |
+|   ╳   |
+|  ╱ ╲  |
+| ╱   ╲ |
+╰───────╯
+"""
+    return color_art(s[1:-1], colors['H'])
+
+  else:
+    template = r"""
+╭───────╮
 | @ @ @ |
 |       |
 |   R   |
 |       |
 | @ @ @ |
-L-------/
-^^^^^^^^^
+╰───────╯
+*********
 """
 
-  if card != new_card:
-    template = template.replace('^', ' ')
+  if new_card is None or card != new_card:
+    template = template.replace('*', ' ')
 
   return card_template_to_art(template, card)
 
 def card_to_art_but_just_a_lil(card):
   template = """
-r---
+╭───
 | @ 
 |   
 | R 
 |   
 | @ 
-L---
+╰───
 """
 
   return card_template_to_art(template, card)
@@ -99,8 +113,11 @@ def discard_to_art(discard):
   last = discard.pop()
   return join_art( list(map(card_to_art_but_just_a_lil, discard)) + [card_to_art(last)], sep='' )
 
-def hand_to_art(hand, new_card):
-  arts = [ card_to_art(card, new_card) for card in hand ]
+def cards_to_art(cards, new_card=None):
+  if len(cards) == 0:
+    return "\n" * 3
+
+  arts = [ card_to_art(card, new_card) for card in cards ]
   return join_art(arts, sep='  ')
 
 def history_to_art(history):
@@ -113,8 +130,7 @@ def history_to_art(history):
 last_hand = None
 
 def choose_draw(hand, history, derivables):
-  discard = derivables['discard']
-  print_state(sorted(hand), None, history, discard)
+  print_state(hand, None, history, derivables)
 
   return input_until(
     "Draw from deck or discard? ['deck'/'discard']: ",
@@ -129,9 +145,7 @@ def choose_discard(hand, history, derivables):
   else:
     new_card = None
 
-  discard = derivables['discard']
-
-  print_state(sorted(hand), new_card, history, discard)
+  print_state(hand, new_card, history, derivables)
 
   discard_choice = Card(input_until(
     "Card to discard: ",
