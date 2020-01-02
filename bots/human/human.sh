@@ -1,2 +1,2 @@
 #!/bin/sh
-python3 human_gin.py
+echo "To play as a human, open a new terminal and run bots/human/human_gin.py"
