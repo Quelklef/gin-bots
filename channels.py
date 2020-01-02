@@ -42,7 +42,8 @@ class Channel:
     self._log("Making fifo")
 
     if os.path.exists(self.location):
-      self._log("Fifo already existed; will override")
+      self._log("Fifo already existed; will override",
+                level=logging.WARNING)
       os.remove(self.location)
 
     os.mkfifo(self.location)

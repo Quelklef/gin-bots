@@ -21,10 +21,29 @@ class GinBot:
     return self.name
 
   def __enter__(self):
-    channel_out_loc = self.exec_loc.parent.joinpath('to_client.fifo')
-    channel_in_loc = self.exec_loc.parent.joinpath('to_server.fifo')
-
     client_name = self.exec_loc.stem
+
+    registration_channel = Channel(
+      name=f"client '{client_name}' registration",
+      location=self.exec_loc.parent.joinpath("registration.fifo"),
+      mode='r',
+    )
+
+    registration_channel.make_fifo()
+
+    subprocess.Popen(
+      ['sh', self.exec_loc.name],
+      cwd=self.exec_loc.parent,
+      stdout=sys.stdout,
+    )
+
+    with registration_channel:
+      subprocess_fifo_id = registration_channel.recv()
+
+    registration_channel.remove_fifo()
+
+    channel_out_loc = self.exec_loc.parent.joinpath(f'to_client_{subprocess_fifo_id}.fifo')
+    channel_in_loc = self.exec_loc.parent.joinpath(f'to_server_{subprocess_fifo_id}.fifo')
 
     self.channel_out = Channel(
       name=f'server -> {client_name}',
@@ -38,24 +57,12 @@ class GinBot:
       mode='r',
     )
 
-    self.channel_in.make_fifo()
-    self.channel_out.make_fifo()
-
-    subprocess.Popen(
-      ['sh', self.exec_loc.name],
-      cwd=self.exec_loc.parent,
-      stdout=sys.stdout,
-    )
-
     self.channel_in.open()
     self.channel_out.open()
 
   def __exit__(self, exc_type, exc_value, traceback):
     self.channel_in.close()
     self.channel_out.close()
-
-    self.channel_in.remove_fifo()
-    self.channel_out.remove_fifo()
 
     if exc_value is not None:
       raise exc_value
@@ -201,12 +208,12 @@ if __name__ == '__main__':
   else:
     bot_names = args.bot_names
 
-  bots = set()
+  bots = []
   for bot_name in args.bot_names:
     bot_path = Path(f"bots/{bot_name}/{bot_name}.sh")
     if not os.path.exists(bot_path):
       print(f"No known bot named '{bot_name}'.")
       sys.exit(1)
-    bots.add(GinBot(bot_name, bot_path))
+    bots.append(GinBot(bot_name, bot_path))
 
   do_tournament(bots, num_hands=args.num_hands)

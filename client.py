@@ -1,5 +1,7 @@
 """ Helper module for gin bots that are written in Python """
 
+import random
+
 from cards import Card
 import cards
 import gin
@@ -8,11 +10,28 @@ from channels import Channel
 def play_bot(bot):
   """ Accepts a bot and plays it against the server.
   The bot must be a generator which accepts and yields the
-  proper values at the right times :-).
+  proper values at the right times.
   Just use the make_bot function to make it... """
 
-  with Channel('client -> server', 'to_server.fifo', 'w') as channel_out, \
-       Channel('server -> client', 'to_client.fifo', 'r') as channel_in:
+  with Channel('registration', 'registration.fifo', 'w') as registration:
+    random_str = ''.join( str(random.randint(0, 9)) for _ in range(20) )
+    id = random_str
+    registration.send(id)
+
+  channel_in = Channel('server -> client', f'to_client_{id}.fifo', 'r')
+  channel_out = Channel('client -> server', f'to_server_{id}.fifo', 'w')
+
+  channel_in.make_fifo()
+  channel_out.make_fifo()
+
+  with channel_out, channel_in:
+    play_bot_with_channels(bot, channel_in, channel_out)
+
+  channel_in.remove_fifo()
+  channel_out.remove_fifo()
+
+
+def play_bot_with_channels(bot, channel_in, channel_out):
 
     def read(expected_desc):
       message = channel_in.recv()
@@ -142,10 +161,12 @@ def make_bot(choose_draw, choose_discard, should_end):
 
   def event__drew(draw_location, drawn_card):
     """ Drew a card. """
-    deck_pop()
-    hand.add(drawn_card)
     if draw_location == 'discard':
       discard.pop()
+    else:
+      deck_pop()
+
+    hand.add(drawn_card)
 
   def event__discarded(discard_choice):
     """ Discarded a card. """
@@ -188,6 +209,7 @@ def make_bot(choose_draw, choose_discard, should_end):
   while True:
 
     if active_player == 'them':
+
       turn = draw_location, discard_choice, do_end = yield
       yield
 
@@ -202,6 +224,7 @@ def make_bot(choose_draw, choose_discard, should_end):
         break
 
     elif active_player == 'us':
+
       if len(discard) == 0:
         draw_location = 'deck'
       else:

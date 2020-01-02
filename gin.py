@@ -212,9 +212,11 @@ def play_hand(player1, player2, *, state_callback=lambda x: None):
         return end_score
 
       # Do reshuffle if needed
+      # Reshuffle keeps the top card of the discard
       if len(deck) == 0:
+        discard_top = discard.pop()
         deck = discard
-        discard = []
+        discard = [discard_top]
         random.shuffle(deck)
 
     # Get where the player wants to draw from
