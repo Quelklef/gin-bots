@@ -174,31 +174,28 @@ blue: yours (underline: just drawn); red: theirs; green: discarded (underline: j
   style_rank = lambda r: rs.all + ef.bold + r + rs.all + grid_style
   ranks = map(style_rank, ['♠ ', '♥ ', '♦ ', '♣ '])
 
-  def cells():
-    for suit in 'SHDC':
-      for rank in range(1, 13 + 1):
-        card = Card(f"{suit}{rank}")
+  def style_cell(card):
+    if card in hand:
+      string = ef.bold + fg.li_blue + 'Y' + rs.all + grid_style
+      if card == drawn_card:
+        string = ef.underl + string
+      return string
 
-        if card in hand:
-          string = ef.bold + fg.li_blue + 'Y' + rs.all + grid_style
-          if card == drawn_card:
-            string = ef.underl + string
-          yield string
+    elif card in their_hand:
+      return ef.bold + fg.li_red + 'T' + rs.all + grid_style
 
-        elif card in their_hand:
-          yield ef.bold + fg.li_red + 'T' + rs.all + grid_style
+    elif card in discard:
+      letter = 'Y' if card in our_discard else 'T'
+      string = ef.bold + fg.green + letter + rs.all + grid_style
+      if card == discard[-1] and card in their_discard:
+        string = ef.underl + string
+      return string
 
-        elif card in discard:
-          letter = 'Y' if card in our_discard else 'T'
-          string = ef.bold + fg.green + letter + rs.all + grid_style
-          if card == their_discard[-1]:
-            string = ef.underl + string
-          yield string
+    else:
+      return ' '
 
-        else:
-          yield ' '
-
-  cells = cells()
+  cards = [ Card(f"{suit}{rank}") for suit in 'SHDC' for rank in range(1, 13 + 1) ]
+  cells = map(style_cell, cards)
 
   result_chars = []
   for char in template:
