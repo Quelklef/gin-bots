@@ -130,6 +130,8 @@ def make_bot(choose_draw, choose_discard, should_end):
     """ Drew a card. """
     deck_pop()
     hand.add(drawn_card)
+    if draw_location == 'discard':
+      discard.pop()
 
   def event__discarded(discard_choice):
     """ Discarded a card. """
