@@ -128,6 +128,7 @@ def make_bot(choose_draw, choose_discard, should_end):
       deck_pop()
 
     discard.append(discard_choice)
+    other_hand.discard(discard_choice)
 
     if drawn_card is not None:
       other_hand.add(drawn_card)
@@ -200,12 +201,12 @@ def make_bot(choose_draw, choose_discard, should_end):
       event__drew(draw_location, drawn_card)
 
       discard_choice = choose_discard(hand, history, derivables)
+      event__discarded(discard_choice)
+
       do_end = gin.can_end(hand) and should_end(hand, history, derivables)
+      event__ending(do_end)
 
       yield (discard_choice, do_end)
-
-      event__discarded(discard_choice)
-      event__ending(do_end)
 
       event__turn(draw_location, drawn_card, discard_choice, do_end)
 
