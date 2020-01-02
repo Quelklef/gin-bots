@@ -133,18 +133,21 @@ def prettify_state_table(hand, history, derivables, *, drawn_card=None):
   their_discard = derivables['their_discard']
 
   melds, deadwood = gin.arrange_hand(hand)
-  metadata = ''.join([
-  'new card:'       , str(drawn_card),
-  'discard pile:'   , ','.join(map(str, discard)),
-  'history:'        , '; '.join(map(lambda move: f"(+{move[0]} -{move[1]})", history)),
-  'melds:'          , ' & '.join(map(lambda meld: ','.join(map(str, meld)), melds)),
-  'deadwood:'       , ','.join(map(str, deadwood)),
-  'deadwood points:', str(gin.points_leftover(hand)),
+  metadata = '\n'.join([
+  'new card: '        + str(drawn_card),
+  'discard pile: '    + ','.join(map(str, discard)),
+  'history: '         + '; '.join(map(lambda move: f"(+{move[0]} -{move[1]})", history)),
+  'melds: '           + ' & '.join(map(lambda meld: ','.join(map(str, meld)), melds)),
+  'deadwood: '        + ','.join(map(str, deadwood)),
+  'deadwood points: ' + str(gin.points_leftover(hand)),
   ])
 
   grid_style = sty.ef.dim
 
   template = f"""
+
+{metadata}
+
 blue: yours (underline: just drawn); red: theirs; green: discarded (underline: just discarded by them)
 {grid_style}
    ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷
