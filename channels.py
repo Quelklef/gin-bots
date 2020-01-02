@@ -10,6 +10,7 @@ import traceback as tb
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+"""
 handler = logging.handlers.RotatingFileHandler('log.log', mode='w', maxBytes=1e5, backupCount=3)
 formatter = logging.Formatter("%(name)s [%(levelname)s]: %(message)s")
 handler.setFormatter(formatter)
@@ -20,6 +21,7 @@ logger.addHandler(handler)
 def exception_handler(*args):
   logger.exception(''.join(tb.format_exception(*args)))
 sys.excepthook = exception_handler
+"""
 
 # Communication between server and client emulates synchronocity
 # It's implemented with two channels, one client -> server and one server -> client
@@ -29,7 +31,7 @@ sys.excepthook = exception_handler
 class Channel:
   def __init__(self, name, location, mode, *, chunk_size=50):
     self.name = name
-    self.location = location
+    self.location = Path(location)
     self.mode = mode
     self.chunk_size = chunk_size
 
@@ -46,6 +48,11 @@ class Channel:
                 level=logging.WARNING)
       os.remove(self.location)
 
+    self.location.parent.mkdir(parents=True, exist_ok=True)
+
+    # Uncomment if you wanna play with someone else on your system
+    # os.umask(0o000)
+    # os.mkfifo(self.location, 0o777)
     os.mkfifo(self.location)
 
   def remove_fifo(self):

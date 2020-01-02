@@ -25,7 +25,7 @@ class GinBot:
 
     registration_channel = Channel(
       name=f"client '{client_name}' registration",
-      location=self.exec_loc.parent.joinpath("registration.fifo"),
+      location="/tmp/gin/registration.fifo",
       mode='r',
     )
 
@@ -42,8 +42,8 @@ class GinBot:
 
     registration_channel.remove_fifo()
 
-    channel_out_loc = self.exec_loc.parent.joinpath(f'to_client_{subprocess_fifo_id}.fifo')
-    channel_in_loc = self.exec_loc.parent.joinpath(f'to_server_{subprocess_fifo_id}.fifo')
+    channel_out_loc = f'/tmp/gin/to_client_{subprocess_fifo_id}.fifo'
+    channel_in_loc = f'/tmp/gin/to_server_{subprocess_fifo_id}.fifo'
 
     self.channel_out = Channel(
       name=f'server -> {client_name}',

@@ -13,13 +13,13 @@ def play_bot(bot):
   proper values at the right times.
   Just use the make_bot function to make it... """
 
-  with Channel('registration', 'registration.fifo', 'w') as registration:
+  with Channel('registration', '/tmp/gin/registration.fifo', 'w') as registration:
     random_str = ''.join( str(random.randint(0, 9)) for _ in range(20) )
     id = random_str
     registration.send(id)
 
-  channel_in = Channel('server -> client', f'to_client_{id}.fifo', 'r')
-  channel_out = Channel('client -> server', f'to_server_{id}.fifo', 'w')
+  channel_in = Channel('server -> client', f'/tmp/gin/to_client_{id}.fifo', 'r')
+  channel_out = Channel('client -> server', f'/tmp/gin/to_server_{id}.fifo', 'w')
 
   channel_in.make_fifo()
   channel_out.make_fifo()
