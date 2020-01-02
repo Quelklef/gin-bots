@@ -6,6 +6,7 @@ sys.path.append('../..')
 from sty import fg, bg, ef, rs
 
 import client
+import gin
 from util import input_until
 from cards import Card, parse_card_is_ok
 
@@ -39,7 +40,7 @@ colors = {
 def prettier_rank(card):
   return 'X' if card.rank == 10 else card.pretty_rank
 
-def print_state(hand, new_card, history, derivables):
+def print_state(hand, drawn_card, history, derivables):
   discard = derivables['discard']
   other_hand = derivables['other_hand']
 
@@ -50,7 +51,7 @@ def print_state(hand, new_card, history, derivables):
   print("\nDiscard:\n")
   print(discard_to_art(discard))
   print("\nYour hand:\n")
-  print(cards_to_art(sorted(hand), new_card))
+  print(cards_to_art(sorted(hand), drawn_card))
   print("\nHistory:\n")
   print(history_to_art(history))
 
@@ -62,15 +63,15 @@ def card_template_to_art(template, card):
 
   return color_art(pretty, colors[card.suit])
 
-def card_to_art(card, new_card=None):
+def card_to_art(card, drawn_card=None):
   if card is None:
     s = """
 ╭───────╮
-| ╲   ╱ |
-|  ╲ ╱  |
-|   ╳   |
-|  ╱ ╲  |
-| ╱   ╲ |
+│ ╲   ╱ │
+│  ╲ ╱  │
+│   ╳   │
+│  ╱ ╲  │
+│ ╱   ╲ │
 ╰───────╯
 """
     return color_art(s[1:-1], colors['H'])
@@ -78,16 +79,16 @@ def card_to_art(card, new_card=None):
   else:
     template = r"""
 ╭───────╮
-| @ @ @ |
-|       |
-|   R   |
-|       |
-| @ @ @ |
+│ @ @ @ │
+│       │
+│   R   │
+│       │
+│ @ @ @ │
 ╰───────╯
 *********
 """
 
-  if new_card is None or card != new_card:
+  if drawn_card is None or card != drawn_card:
     template = template.replace('*', ' ')
 
   return card_template_to_art(template, card)
@@ -95,11 +96,11 @@ def card_to_art(card, new_card=None):
 def card_to_art_but_just_a_lil(card):
   template = """
 ╭───
-| @ 
-|   
-| R 
-|   
-| @ 
+│ @ 
+│   
+│ R 
+│   
+│ @ 
 ╰───
 """
 
@@ -113,11 +114,11 @@ def discard_to_art(discard):
   last = discard.pop()
   return join_art( list(map(card_to_art_but_just_a_lil, discard)) + [card_to_art(last)], sep='' )
 
-def cards_to_art(cards, new_card=None):
+def cards_to_art(cards, drawn_card=None):
   if len(cards) == 0:
     return "\n" * 3
 
-  arts = [ card_to_art(card, new_card) for card in cards ]
+  arts = [ card_to_art(card, drawn_card) for card in cards ]
   return join_art(arts, sep='  ')
 
 def history_to_art(history):
@@ -125,12 +126,105 @@ def history_to_art(history):
   return f"\n{h}\n"
 
 
+# == A different way of displaying state == #
+
+
+def print_state_tables(hand, drawn_card, history, derivables):
+  print(state_to_art_tables(hand, drawn_card, history, derivables))
+
+def state_to_art_tables(hand, drawn_card, history, derivables):
+
+  their_hand = derivables['other_hand']
+  discard = derivables['discard']
+  our_discard = derivables['our_discard']
+  their_discard = derivables['their_discard']
+
+  print()
+  print('new card:', str(drawn_card))
+  print('discard pile:', ','.join(map(str, discard)))
+  melds, deadwood = gin.arrange_hand(hand)
+  print('history:', '; '.join(map(lambda move: f"(+{move[0]} -{move[1]})", history)))
+  print('melds:', ' & '.join(map(lambda meld: ','.join(map(str, meld)), melds)))
+  print('deadwood:', ','.join(map(str, deadwood)))
+  print('deadwood points:', gin.points_leftover(hand))
+  print()
+
+  grid_style = ef.dim
+
+  template = f"""
+blue: yours (underline: just drawn); red: theirs; green: discarded (underline: just discarded by them)
+{grid_style}
+   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷
+   │ % │ % │ % │ % │ % │ % │ % │ % │ % │ % │ % │ % │ % │
+╶──┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┤
+ $_│ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │
+╶──┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┤
+ $_│ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │
+╶──┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┤
+ $_│ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │
+╶──┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┤
+ $_│ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │ # │
+╶──┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
+{rs.all}
+"""[1:-1]
+
+  style_suit = lambda s: rs.all + s + rs.all + grid_style
+  suits = map(style_suit, 'A23456789XJQK')
+
+  style_rank = lambda r: rs.all + ef.bold + r + rs.all + grid_style
+  ranks = map(style_rank, ['♠ ', '♥ ', '♦ ', '♣ '])
+
+  def cells():
+    for suit in 'SHDC':
+      for rank in range(1, 13 + 1):
+        card = Card(f"{suit}{rank}")
+
+        if card in hand:
+          string = ef.bold + fg.li_blue + 'Y' + rs.all + grid_style
+          if card == drawn_card:
+            string = ef.underl + string
+          yield string
+
+        elif card in their_hand:
+          yield ef.bold + fg.li_red + 'T' + rs.all + grid_style
+
+        elif card in discard:
+          letter = 'Y' if card in our_discard else 'T'
+          string = ef.bold + fg.green + letter + rs.all + grid_style
+          if card == their_discard[-1]:
+            string = ef.underl + string
+          yield string
+
+        else:
+          yield ' '
+
+  cells = cells()
+
+  result_chars = []
+  for char in template:
+    if char == '#':
+      result_chars.append(next(cells))
+    elif char == '%':
+      result_chars.append(next(suits))
+    elif char == '$':
+      result_chars.append(next(ranks))
+    elif char == '_':
+      pass
+    else:
+      result_chars.append(char)
+
+  return ''.join(result_chars)
+
 # == End art == #
 
-last_hand = None
+
+hand_before_draw = None
 
 def choose_draw(hand, history, derivables):
-  print_state(hand, None, history, derivables)
+  print_state_tables(hand, None, history, derivables)
+
+  global hand_before_draw
+  hand_before_draw = {*hand}
 
   return input_until(
     "Draw from deck or discard? ['deck'/'discard']: ",
@@ -138,24 +232,24 @@ def choose_draw(hand, history, derivables):
   )
 
 def choose_discard(hand, history, derivables):
-  global last_hand
-
-  if last_hand:
-    new_card = next(iter(hand - last_hand))
+  if hand_before_draw:
+    drawn_card = next(iter(hand - hand_before_draw))
   else:
-    new_card = None
+    drawn_card = None
 
-  print_state(hand, new_card, history, derivables)
+  print_state_tables(hand, drawn_card, history, derivables)
 
   discard_choice = Card(input_until(
     "Card to discard: ",
-    parse_card_is_ok,
+    lambda card: parse_card_is_ok(card) and Card(card) in hand,
+    error="Either bad format or card not in hand.",
   ))
 
-  last_hand = hand - {discard_choice}
   return discard_choice
 
 def should_end(hand, history, derivables):
+  print_state_tables(hand, None, history, derivables)
+
   return 'y' == input_until(
     "End the game here? ['y'/'n']: ",
     lambda s: s in ['y', 'n'],

@@ -23,10 +23,10 @@ def union(xs, start=None):
     result |= x
   return result
 
-def input_until(string, predicate):
+def input_until(string, predicate, *, error="What? Try again."):
   while True:
     val = input(string)
     if predicate(val):
       return val
     else:
-      print("What? Try again.")
+      print(error)

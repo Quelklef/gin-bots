@@ -77,8 +77,10 @@ def make_bot(choose_draw, choose_discard, should_end):
 
     `derivables`: A bunch of information that is derivable from hand and history
     but done in this function for convenience and efficiency. Contains the following keys:
-      "discard"   : the discard pile, ordered chronologically
-      "other_hand": cards that are definitely in the other player's hand
+      "discard"       : the discard pile, ordered chronologically
+      "our_discard"   : the largest sublist of `discard` containing only cards that this player discarded
+      "their_discard" : the largest sublist of `discard` containing only cards that the other player discarded
+      "other_hand"    : cards that are definitely in the other player's hand
 
   and each should return:
 
@@ -103,8 +105,10 @@ def make_bot(choose_draw, choose_discard, should_end):
   # History of moves
   history = []
 
-  # Discard pile
+  # Discard piles
   discard = []
+  our_discard = []
+  their_discard = []
 
   # Cards that are definitely in the other hand
   other_hand = set()
@@ -117,6 +121,8 @@ def make_bot(choose_draw, choose_discard, should_end):
       # Reshuffle happens
       deck_size = len(discard)
       discard.clear()
+      our_discard.clear()
+      their_discard.clear()
 
   def event__opponent_turn(draw_location, drawn_card, discard_choice, do_end):
     """ Opponent's turn passed. `drawn_card` is a card if known, else None. """
@@ -131,6 +137,7 @@ def make_bot(choose_draw, choose_discard, should_end):
       other_hand.add(drawn_card)
 
     discard.append(discard_choice)
+    their_discard.append(discard_choice)
     other_hand.discard(discard_choice)
 
   def event__drew(draw_location, drawn_card):
@@ -144,6 +151,7 @@ def make_bot(choose_draw, choose_discard, should_end):
     """ Discarded a card. """
     hand.remove(discard_choice)
     discard.append(discard_choice)
+    our_discard.append(discard_choice)
 
   def event__ending(do_end):
     """ Whether or not we're ending the game. """
@@ -163,6 +171,8 @@ def make_bot(choose_draw, choose_discard, should_end):
   derivables = {
     "discard": discard,
     "other_hand": other_hand,
+    "our_discard": our_discard,
+    "their_discard": their_discard,
   }
 
   # Who starts? either 'ours' or 'theirs'
