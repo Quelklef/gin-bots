@@ -10,11 +10,16 @@ import traceback as tb
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-handler = logging.handlers.RotatingFileHandler('log.log', mode='w', maxBytes=1e5, backupCount=3)
+file_handler = logging.handlers.RotatingFileHandler('log.log', mode='w', maxBytes=1e5, backupCount=3)
 formatter = logging.Formatter("%(name)s [%(levelname)s]: %(message)s")
-handler.setFormatter(formatter)
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
+file_handler.setFormatter(formatter)
+file_handler.setLevel(logging.INFO)
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.ERROR)
+
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
 
 # log exceptions
 def exception_handler(*args):
