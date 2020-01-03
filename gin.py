@@ -185,15 +185,20 @@ def play_hand(player1, player2, *, state_callback=lambda x: None):
 
   active_player = player1
   active_hand = hand1
+  latent_hand = hand2
 
   def swap_players():
     nonlocal active_player, active_hand
+
     if active_player == player1:
       active_player = player2
       active_hand = hand2
+      latent_hand = hand1
+
     elif active_player == player2:
       active_player = player1
       active_hand = hand1
+      latent_hand = hand2
 
   while True:
 
@@ -208,7 +213,7 @@ def play_hand(player1, player2, *, state_callback=lambda x: None):
       draw_location, discard_choice, do_end = previous_turn
 
       if do_end:
-        end_score = score_hand(hand1, hand2)
+        end_score = score_hand(active_hand, latent_hand)
         return end_score
 
       # Do reshuffle if needed
