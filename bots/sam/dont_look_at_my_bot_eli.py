@@ -2,14 +2,18 @@ import sys
 sys.path.append('../..')
 import client, gin, cards
 import logging, random
+from util import flatten
 
-logger = logging.getLogger('best_bot')
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+handler = logging.FileHandler('bot.log')
+logger.addHandler(handler)
 
 # draw_choice is one of 'discard', 'deck'
 # discard_choice is a Card
 # history is [ (draw_choice, discard_choice, do_end), ... ]
-# derivables is { 'discard': discard, 'their_hand': their_hand }
+# derivables is { 'disard': discard, 'other_hand': other_hand }
 
 def decompose_history(history):
     """ decomposes the history into opponents hand, discard, and remaining deck """
@@ -56,24 +60,54 @@ def singles(cards):
                     if c is not card])
     return filter(doesnt_have_pair, cards)
 
+IS_IN_MELD_PENALTY           = 300
+IS_IN_PAIR_PENALTY           = 80
+GIVES_THEM_FOUR_MELD_PENALTY = 150
+GIVES_THEM_MELD_PENALTY      = 100
+GIVES_THEM_PAIR_PENALTY      = 30
+
 def choose_discard(hand, history, derivables):
     their_hand, discard, deck = decompose_history(history)
-    _, deadwood = gin.arrange_hand(hand)
-    deaderwood = list(singles(deadwood))
-    if len(deaderwood) is 0:
-        deaderwood = deadwood
-    if len(deaderwood) is 0:
-        deaderwood = hand
+    melds, deadwood = gin.arrange_hand(hand)
 
-    card_to_discard = min(deaderwood,
-                          key=lambda card: gin.points_leftover(hand - {card}, their_hand))
+    meld_cards = list(flatten(melds))
+    is_in_meld = lambda card: card in meld_cards
 
+    pair_cards = list(flatten(gin.get_pairs(deadwood)))
+    is_in_pair = lambda card: card in pair_cards
+
+    their_melds, their_deadwood = gin.arrange_hand(their_hand)
+    gives_them_four_meld = gin.extends_any_meld(their_melds)
+
+    their_pairs = gin.get_pairs(their_deadwood)
+    gives_them_meld = gin.extends_any_pair(their_pairs)
+
+    gives_them_pair = lambda card: any(gin.is_pair(card, c) for c in their_deadwood)
+
+    def score_discard_choice(card):
+        score = 0
+        score += IS_IN_MELD_PENALTY if is_in_meld(card) else 0
+        score += IS_IN_PAIR_PENALTY if is_in_pair(card) else 0
+        score += GIVES_THEM_FOUR_MELD_PENALTY if gives_them_four_meld(card) else 0
+        score += GIVES_THEM_MELD_PENALTY if gives_them_meld(card) else 0
+        score += GIVES_THEM_PAIR_PENALTY if gives_them_pair(card) else 0
+        score += (15 - card.value)
+        return score
+
+    #discard_candidates = min(hand, key=score_discard_choice)
+
+    #card_to_discard = min(discard_candidates,
+    #                      key=lambda card: gin.points_leftover(hand - {card}, their_hand))
+
+    logger.info(sorted((score_discard_choice(card), card) for card in hand))
+    card_to_discard = min(hand, key=score_discard_choice)
     logger.info(f'discarding {card_to_discard}')
     return card_to_discard
 
 def should_end(hand, history, derivables):
-    melds, deadwood = gin.arrange_hand(hand)
-    return len(deadwood) is 0
+    #melds, deadwood = gin.arrange_hand(hand)
+    #return len(deadwood) is 0
+    return True
 
 best_bot = client.make_bot(choose_draw, choose_discard, should_end)
 
