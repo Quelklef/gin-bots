@@ -11,21 +11,35 @@ UNDERCUT_BONUS = 10
 GIN_BONUS = 20
 MAX_POINTS_TO_GO_DOWN = 7
 
+def kinds_match(cards):
+  return len(set(card.rank for card in cards)) == 1
+
+def in_a_row(cards):
+  return all(prev_card.adjacent(card) for prev_card, card in pairwise(sorted(cards)))
+
+def is_pair(cards):
+  """ two cards that have same rank or are next to each other """
+  card1, card2 = cards
+  return len(cards) is 2 and (kinds_match(cards) or (card1.adjacent(card2)))
+
 def is_book(cards):
   """ a 3- or 4-of a kind """
-  return len(cards) in [3, 4] and len(set(card.rank for card in cards)) == 1
+  return len(cards) in [3, 4] and kinds_match(cards)
 
 def is_run(cards):
   """ a straight flush with 3 or more cards """
-  return len(cards) in [3, 4] and all(prev_card.adjacent(card) for prev_card, card in pairwise(sorted(cards)))
+  return len(cards) in [3, 4] and in_a_row(cards)
 
 def is_meld(cards):
   """ a book or a run """
   return is_book(cards) or is_run(cards)
 
-def get_melds(hand):
-  melds_3 = filter(is_meld, map(frozenset, it.combinations(hand, 3)))
-  melds_4 = filter(is_meld, map(frozenset, it.combinations(hand, 4)))
+def get_pairs(cards):
+  return filter(is_pair, map(frozenset, it.combinations(cards, 2)))
+
+def get_melds(cards):
+  melds_3 = filter(is_meld, map(frozenset, it.combinations(cards, 3)))
+  melds_4 = filter(is_meld, map(frozenset, it.combinations(cards, 4)))
   return frozenset({*melds_3, *melds_4})
 
 def conflicting(melds):
@@ -36,19 +50,15 @@ def sum_cards_value(cards):
   return sum(card.value for card in cards)
 
 def arrange_hand(hand):
-  """ Arrange a hand into (melds, deadwood)
-  If `other_melds` is included, allows cards in `hand` to be tacked
-  onto those melds when creating melds """
+  """ Arrange a hand into (melds, deadwood)"""
   # adapted from https://discardoverflow.com/a/542706/4781072
-
   all_possible_melds = get_melds(hand)
   meld_sets = powerset(all_possible_melds)
   valid_meld_sets = it.filterfalse(conflicting, meld_sets)
 
   def deadwood(meld_set):
     meld_cards = frozenset(flatten(meld_set))
-    deadwood = frozenset(hand - meld_cards)
-    return deadwood
+    return frozenset(hand - meld_cards)
 
   def points_leftover(meld_set):
     return sum_cards_value(deadwood(meld_set))
@@ -68,6 +78,12 @@ def extends_any_meld(melds):
   """ returns a predicate of a card that decides whether that card can
   extend any of these given melds """
   return lambda card: any(is_meld(meld | {card}) for meld in melds)
+
+def extends_any_pair(pairs):
+  """ returns a predicate of a card that decides whether that card can
+  extend any of these given pairs """
+  #TODO unify with above
+  return lambda card: any(is_pair(pair | {card}) for pair in pairs)
 
 def can_end(hand):
   """ is the player able to end the game, given the current hand? """
