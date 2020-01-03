@@ -25,11 +25,11 @@ class GinBot:
 
     registration_channel = Channel(
       name=f"client '{client_name}' registration",
-      location="/tmp/gin/registration.fifo",
-      mode='r',
+      id="gin_registration",
+      role=Channel.SERVER,
     )
 
-    registration_channel.make_fifo()
+    registration_channel.open()
 
     subprocess.Popen(
       ['sh', self.exec_loc.name],
@@ -37,38 +37,27 @@ class GinBot:
       stdout=sys.stdout,
     )
 
-    with registration_channel:
-      subprocess_fifo_id = registration_channel.recv()
+    channel_id = registration_channel.recv()
 
-    registration_channel.remove_fifo()
-
-    channel_out_loc = f'/tmp/gin/to_client_{subprocess_fifo_id}.fifo'
-    channel_in_loc = f'/tmp/gin/to_server_{subprocess_fifo_id}.fifo'
-
-    self.channel_out = Channel(
-      name=f'server -> {client_name}',
-      location=channel_out_loc,
-      mode='w',
+    self.channel = Channel(
+      name=f'server <-> {client_name}',
+      id=channel_id,
+      role=Channel.SERVER,
     )
 
-    self.channel_in = Channel(
-      name=f'{client_name} -> server',
-      location=channel_in_loc,
-      mode='r',
-    )
+    self.channel.open()
 
-    self.channel_in.open()
-    self.channel_out.open()
+    registration_channel.send('fifos made')
+    registration_channel.close()
 
   def __exit__(self, exc_type, exc_value, traceback):
-    self.channel_in.close()
-    self.channel_out.close()
+    self.channel.close()
 
     if exc_value is not None:
       raise exc_value
 
   def send_string(self, message: str):
-    self.channel_out.send(message)
+    self.channel.send(message)
 
   def send(self, desc, *args):
     message_string = None
@@ -98,7 +87,7 @@ class GinBot:
     self.send_string(message_string)
 
   def recv(self):
-    message_string = self.channel_in.recv()
+    message_string = self.channel.recv()
     desc, payload = message_string.split(':')
 
     if desc == 'draw_from':

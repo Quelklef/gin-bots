@@ -13,35 +13,31 @@ def play_bot(bot):
   proper values at the right times.
   Just use the make_bot function to make it... """
 
-  with Channel('registration', '/tmp/gin/registration.fifo', 'w') as registration:
+  with Channel('registration', id='gin_registration', role=Channel.CLIENT) as registration_channel:
+
     random_str = ''.join( str(random.randint(0, 9)) for _ in range(20) )
     id = random_str
-    registration.send(id)
+    registration_channel.send(id)
 
-  channel_in = Channel('server -> client', f'/tmp/gin/to_client_{id}.fifo', 'r')
-  channel_out = Channel('client -> server', f'/tmp/gin/to_server_{id}.fifo', 'w')
+    # wait for server to create fifos
+    response = registration_channel.recv()
+    assert response == 'fifos made'
 
-  channel_in.make_fifo()
-  channel_out.make_fifo()
-
-  with channel_out, channel_in:
-    play_bot_with_channels(bot, channel_in, channel_out)
-
-  channel_in.remove_fifo()
-  channel_out.remove_fifo()
+  with Channel('client <-> server', id=id, role=Channel.CLIENT) as channel:
+    play_bot_with_channels(bot, channel)
 
 
-def play_bot_with_channels(bot, channel_in, channel_out):
+def play_bot_with_channels(bot, channel):
 
     def read(expected_desc):
-      message = channel_in.recv()
+      message = channel.recv()
       desc, payload = message.split(':')
       assert desc == expected_desc, f"Server and client have fallen out of sync. Server at '{desc}' but client at '{expected_desc}'"
       return payload
 
     def write(desc, payload):
       message = f"{desc}:{payload}"
-      channel_out.send(message)
+      channel.send(message)
 
     starting_hand, who_starts = read('starting').split(';')
     starting_hand = set(map(Card, starting_hand.split(',')))

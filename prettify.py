@@ -173,7 +173,6 @@ def prettify_state_table(hand1, hand2, history, discard,
   template = f"""
 
 blue: hand 1; green: hand 2; red: discarded; underline: recent
-
 {grid_style}
    ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷   ╷
    │ % │ % │ % │ % │ % │ % │ % │ % │ % │ % │ % │ % │ % │
