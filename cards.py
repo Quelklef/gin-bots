@@ -5,12 +5,12 @@ class Card:
     suit = card[0]
     rank = card[1:]
 
-    assert rank in 'AJQKajqk' or int(rank) in range(1, 13 + 1)
+    assert rank in 'AXJQKaxjqk' or int(rank) in range(1, 13 + 1)
     assert suit in 'CDHScdhs'
 
     suit = suit.upper()
 
-    ranks = { 'A': 1, 'J': 11, 'Q': 12, 'K': 13 }
+    ranks = { 'A': 1, 'X': 10, 'J': 11, 'Q': 12, 'K': 13 }
     rank = ranks.get(rank.upper()) or int(rank)
 
     self.suit = suit.upper()
