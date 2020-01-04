@@ -8,6 +8,7 @@ name = "pypi"
 [packages]
 
 sty = "==1.0.0b12"
+hypothesis = "*"
 
 
 [dev-packages]

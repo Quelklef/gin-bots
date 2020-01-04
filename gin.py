@@ -17,22 +17,19 @@ def kinds_match(cards):
 def in_a_row(cards):
   return all(prev_card.adjacent(card) for prev_card, card in pairwise(sorted(cards)))
 
+def meldlike(cards):
+  """ any number of cards that have the same rank or are all next to each other
+  (and of same suit) """
+  return len(cards) > 1 and (kinds_match(cards) or in_a_row(cards))
+
 def is_pair(cards):
   """ two cards that have same rank or are next to each other """
   card1, card2 = cards
-  return len(cards) is 2 and (kinds_match(cards) or (card1.adjacent(card2)))
-
-def is_book(cards):
-  """ a 3- or 4-of a kind """
-  return len(cards) in [3, 4] and kinds_match(cards)
-
-def is_run(cards):
-  """ a straight flush with 3 or more cards """
-  return len(cards) in [3, 4] and in_a_row(cards)
+  return len(cards) is 2 and meldlike(cards)
 
 def is_meld(cards):
   """ a book or a run """
-  return is_book(cards) or is_run(cards)
+  return len(cards) in [3, 4] and meldlike(cards)
 
 def get_pairs(cards):
   return filter(is_pair, map(frozenset, it.combinations(cards, 2)))
