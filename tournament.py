@@ -198,7 +198,7 @@ if __name__ == '__main__':
     bot_names = args.bot_names
 
   bots = []
-  for bot_name in args.bot_names:
+  for bot_name in bot_names:
     bot_path = Path(f"bots/{bot_name}/{bot_name}.sh")
     if not os.path.exists(bot_path):
       print(f"No known bot named '{bot_name}'.")
