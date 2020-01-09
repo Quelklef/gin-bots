@@ -1,13 +1,3 @@
-# Python stuff
-.Python
-.hypothesis/
-__pycache__/
-bin/
-include/
-lib/
-pip-selfcheck.json
-
-# Logs
-log.log
-bots/**/*.log
-bots/**/__pycache__/
+**.log
+**.log.*
+venv/
