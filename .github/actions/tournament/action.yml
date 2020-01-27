@@ -1,0 +1,22 @@
+name: 'run tournament'
+description: 'runs tournament.py and updates the readme with current winners'
+author: 'samm81'
+inputs:
+  git_push:
+    description: 'commit and push changes'
+    required: false
+    default: 'true'
+  commit_message:
+    description: 'commit message'
+    required: false
+    default: '[run_tournament_action] updates readme with latest tournament results'
+  num_hands:
+    description: 'number of hands to play in the tournament'
+    required: false
+    default: 15
+outputs:
+  num_changed:
+    description: 'number of files changed'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
