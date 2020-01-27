@@ -105,9 +105,7 @@ def choose_discard(hand, history, derivables):
     return card_to_discard
 
 def should_end(hand, history, derivables):
-    #melds, deadwood = gin.arrange_hand(hand)
-    #return len(deadwood) is 0
-    return True
+    return gin.points_leftover(hand, derivables['other_hand']) < 4
 
 best_bot = client.make_bot(choose_draw, choose_discard, should_end)
 
