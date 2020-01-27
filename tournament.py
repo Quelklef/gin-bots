@@ -193,6 +193,8 @@ if __name__ == '__main__':
 
   if len(args.bot_names) == 0:
     bot_names = os.listdir('bots/')
+    # human doesn't get to be in the tournament
+    bot_names = filter(lambda n: n != 'human', bot_names)
   elif len(args.bot_names) == 1:
     print("need to specify two or more bots!")
     sys.exit(1)
