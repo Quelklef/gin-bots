@@ -226,6 +226,8 @@ def play_hand(player1, player2, *, state_callback=lambda x: None):
 
       if do_end:
         end_score = score_hand(latent_hand, active_hand)
+        if latent_hand == hand2:
+          end_score *= -1
         return end_score
 
       # Do reshuffle if needed
