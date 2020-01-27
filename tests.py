@@ -55,26 +55,27 @@ Hand = st.frozensets(Card, min_size=10, max_size=10)
 
 class TestGameMethods(unittest.TestCase):
   @given(gin_hand(), Hand)
-  def test_score_gin_hand(self, our_hand, their_hand):
-    _, their_deadwood = gin.arrange_hand(their_hand)
-    expected_score = gin.GIN_BONUS + gin.sum_cards_value(their_deadwood)
-    self.assertEqual(expected_score, gin.score_hand(our_hand, their_hand))
+  def test_score_gin_hand(self, gin_hand, other_hand):
+    _, other_deadwood = gin.arrange_hand(other_hand)
+    assume(len(other_deadwood) > 0)
+    expected_score = gin.GIN_BONUS + gin.sum_cards_value(other_deadwood)
+    self.assertEqual(expected_score, gin.score_hand(gin_hand, other_hand))
 
   @given(go_down_hand(), Hand)
-  def test_score_go_down_hand(self, our_hand, their_hand):
-    our_melds, our_deadwood = gin.arrange_hand(our_hand)
-    our_points = gin.sum_cards_value(our_deadwood)
-    _, their_deadwood = gin.arrange_hand(their_hand)
-    assume(len(their_deadwood) > 0)
-    their_unmatched_deadwood = frozenset(filterfalse(gin.extends_any_meld(our_melds), their_deadwood))
-    their_points = gin.sum_cards_value(their_unmatched_deadwood)
-    assume(their_points > our_points)
-    if their_points > our_points:
-      expected_score = their_points - our_points
-      self.assertEqual(expected_score, gin.score_hand(our_hand, their_hand))
+  def test_score_go_down_hand(self, go_down_hand, other_hand):
+    go_down_melds, go_down_deadwood = gin.arrange_hand(go_down_hand)
+    go_down_points = gin.sum_cards_value(go_down_deadwood)
+    _, other_deadwood = gin.arrange_hand(other_hand)
+    assume(len(other_deadwood) > 0)
+    other_unmatched_deadwood = frozenset(filterfalse(gin.extends_any_meld(go_down_melds), other_deadwood))
+    other_points = gin.sum_cards_value(other_unmatched_deadwood)
+    assume(other_points > go_down_points)
+    if other_points > go_down_points:
+      expected_score = other_points - go_down_points
+      self.assertEqual(expected_score, gin.score_hand(go_down_hand, other_hand))
     else:
-      expected_score = -10 - (our_points - their_points)
-      self.assertEqual(expected_score, gin.score_hand(our_hand, their_hand))
+      expected_score = -10 - (go_down_points - other_points)
+      self.assertEqual(expected_score, gin.score_hand(go_down_hand, other_hand))
 
 if __name__ == '__main__':
   unittest.main()
