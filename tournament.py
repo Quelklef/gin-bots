@@ -150,7 +150,9 @@ def do_tournament(bots, num_hands=15):
 
   # Pit every bot against each other
   matches = list(it.combinations(bots, 2))
-  match_results = { match: compete(*match, num_hands=num_hands) for match in matches }
+  match_results = { match: compete(*match, num_hands=num_hands)
+                    for match
+                    in matches }
   print_scoreboard(match_results)
 
 def print_scoreboard(match_results):

@@ -30,7 +30,7 @@ sys.excepthook = exception_handler
 
 def generate_random_string(*, length=35):
   # TODO: ensure unique
-  return ''.join( str(random.randint(0, 9)) for _ in range(length) ) 
+  return ''.join( str(random.randint(0, 9)) for _ in range(length) )
 
 class Channel:
   """
@@ -223,5 +223,3 @@ def chunk_string(string, chunk_size):
 
     if not continues:
       break
-
-

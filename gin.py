@@ -214,7 +214,6 @@ def play_hand(player1, player2, *, state_callback=lambda x: None):
       latent_hand = hand2
 
   while True:
-
     # Send the player the other player's turn
     if len(history) > 0:
       previous_turn = history[-1]
@@ -265,4 +264,3 @@ def play_hand(player1, player2, *, state_callback=lambda x: None):
 
     state_callback(hand1, hand2, history, discard)
     swap_players()
-
